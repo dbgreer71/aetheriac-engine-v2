@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.DS_Store
+.env
+data/index/
+data/rfc_raw/
+artifacts/
+*.npy
+*.pkl
