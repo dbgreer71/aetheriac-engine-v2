@@ -27,8 +27,12 @@ RUN pip install --no-cache-dir -e .
 # Copy application code
 COPY ae2/ ./ae2/
 
-# Create data directory
-RUN mkdir -p /app/data/index && chown -R aev2:aev2 /app
+# Copy serving script and make executable
+COPY scripts/serve.sh ./scripts/serve.sh
+RUN chmod +x /app/scripts/serve.sh && mkdir -p /app/data/index
+
+# Create data directory and set permissions
+RUN chown -R aev2:aev2 /app
 
 # Switch to non-root user
 USER aev2
@@ -39,10 +43,6 @@ EXPOSE 8001
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8001/healthz || exit 1
-
-# Copy serving script and make executable
-COPY scripts/serve.sh /app/scripts/serve.sh
-RUN chmod +x /app/scripts/serve.sh
 
 # Default command
 CMD ["/app/scripts/serve.sh"]

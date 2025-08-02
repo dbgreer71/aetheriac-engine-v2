@@ -194,17 +194,40 @@ jobs:
             -p 8001:8001 \
             -v "$PWD/data/index":/app/data/index \
             aev2:test
-          # Wait for readiness
-          for i in {1..30}; do
-            curl -sf http://127.0.0.1:8001/readyz && break
-            sleep 1
+
+      - name: Wait for readiness
+        run: |
+          set -euo pipefail
+          for i in {1..40}; do
+            if curl -sf http://127.0.0.1:8001/readyz >/dev/null; then
+              echo "[perf] service is ready"
+              exit 0
+            fi
+            sleep 0.5
           done
-          curl -sf http://127.0.0.1:8001/readyz
+          echo "[perf] readiness timed out"
+          docker logs aev2 || true
+          exit 1
 
       - name: HTTP perf
+        if: ${{ success() }}
         run: |
           python scripts/perf_http.py --host http://127.0.0.1:8001 --metrics --out perf_summary.json
-          cat perf_summary.json
+          cat perf_summary.json || true
+
+      - name: Fetch metrics snapshot
+        if: always()
+        run: |
+          curl -sf http://127.0.0.1:8001/metrics > perf_metrics.prom || true
+
+      - name: Upload perf artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-artifacts
+          path: |
+            perf_summary.json
+            perf_metrics.prom
 
       - name: Stop container
         if: always()
