@@ -329,17 +329,19 @@ class EvaluationRunner:
                     results["ok"] += 1
                 else:
                     results["false_positives"] += 1
-                    results["failures"].append({
-                        "case_id": case_id,
-                        "query": query_text,
-                        "expected": expected,
-                        "actual": {
-                            "intent": route_result.intent,
-                            "target": route_result.target,
-                            "confidence": route_result.confidence,
-                            "notes": route_result.notes
+                    results["failures"].append(
+                        {
+                            "case_id": case_id,
+                            "query": query_text,
+                            "expected": expected,
+                            "actual": {
+                                "intent": route_result.intent,
+                                "target": route_result.target,
+                                "confidence": route_result.confidence,
+                                "notes": route_result.notes,
+                            },
                         }
-                    })
+                    )
 
                 # Record latency
                 latency = (time.time() - start_time) * 1000
@@ -347,17 +349,21 @@ class EvaluationRunner:
 
             except Exception as e:
                 self.logger.error(f"Error processing case {case_id}: {e}")
-                results["failures"].append({
-                    "case_id": case_id,
-                    "query": query_text,
-                    "expected": expected,
-                    "actual": {"error": str(e)}
-                })
+                results["failures"].append(
+                    {
+                        "case_id": case_id,
+                        "query": query_text,
+                        "expected": expected,
+                        "actual": {"error": str(e)},
+                    }
+                )
 
         # Calculate metrics
         if results["total"] > 0:
             results["abstain_accuracy"] = results["abstain_correct"] / results["total"]
-            results["false_positive_rate"] = results["false_positives"] / results["total"]
+            results["false_positive_rate"] = (
+                results["false_positives"] / results["total"]
+            )
         else:
             results["abstain_accuracy"] = 0.0
             results["false_positive_rate"] = 0.0
@@ -371,26 +377,23 @@ class EvaluationRunner:
             "suite": "negatives",
             "dataset": "m1",
             "ts": datetime.now().isoformat(),
-            "counts": {
-                "total": results["total"],
-                "ok": results["ok"]
-            },
+            "counts": {"total": results["total"], "ok": results["ok"]},
             "metrics": {
                 "abstain_accuracy": results["abstain_accuracy"],
                 "false_positive_rate": results["false_positive_rate"],
-                "latency_ms": results.get("latency_ms", {})
+                "latency_ms": results.get("latency_ms", {}),
             },
             "failures": [
                 {
                     "id": failure["case_id"],
-                    "reason": f"Expected ABSTAIN, got {failure['actual'].get('intent', 'ERROR')}"
+                    "reason": f"Expected ABSTAIN, got {failure['actual'].get('intent', 'ERROR')}",
                 }
                 for failure in results["failures"]
             ],
             "hashes": {
                 "dataset_sha256": calculate_dataset_hash(dataset_path),
-                "code_rev": get_git_revision()
-            }
+                "code_rev": get_git_revision(),
+            },
         }
 
         return report
@@ -426,13 +429,13 @@ class EvaluationRunner:
                 # Route query to get intent
                 stores = {"concept_store": self.concept_store}
                 route_result = route(query_text, stores)
-                
+
                 # Get troubleshooting steps based on intent
                 if route_result.intent == "TROUBLESHOOT":
                     # Use actual playbook system
                     from ..playbooks.models import PlayContext
                     from ..playbooks.bgp_neighbor_down import run_bgp_playbook
-                    
+
                     # Extract context from query
                     ctx = PlayContext(
                         vendor=case.get("ctx", {}).get("vendor", "iosxe"),
@@ -443,16 +446,19 @@ class EvaluationRunner:
                         mtu=case.get("ctx", {}).get("mtu"),
                         vrf=case.get("ctx", {}).get("vrf"),
                     )
-                    
+
                     # Run BGP playbook
                     playbook_result = run_bgp_playbook(ctx, self.index_store)
-                    
+
                     steps_result = {
                         "steps": [
                             {
                                 "description": step.check,
                                 "commands": step.commands,
-                                "citations": [{"rfc": c.rfc, "section": c.section} for c in step.citations],
+                                "citations": [
+                                    {"rfc": c.rfc, "section": c.section}
+                                    for c in step.citations
+                                ],
                             }
                             for step in playbook_result.steps
                         ]
@@ -675,7 +681,7 @@ def main():
     parser = argparse.ArgumentParser(description="AE v2 Evaluation Runner")
     parser.add_argument(
         "--suite",
-        choices=["defs", "concepts", "trouble", "negatives"],
+        choices=["defs", "concepts", "trouble", "negatives", "ambiguous"],
         required=True,
         help="Evaluation suite to run",
     )
@@ -714,6 +720,10 @@ def main():
         report = runner.run_troubleshooting_evaluation(dataset_path, args.repeats)
     elif args.suite == "negatives":
         report = runner.run_negatives_evaluation(dataset_path, args.repeats)
+    elif args.suite == "ambiguous":
+        report = runner.run_negatives_evaluation(
+            dataset_path, args.repeats
+        )  # Use same logic as negatives
     else:
         logger.error(f"Unknown suite: {args.suite}")
         sys.exit(1)

@@ -1,0 +1,20 @@
+{"id":"A1","query":"bgp","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP alone is too ambiguous - could be definition, concept, or troubleshooting"}}
+{"id":"A2","query":"bgp neighbor","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP neighbor alone is too ambiguous - could be definition or troubleshooting"}}
+{"id":"A3","query":"bgp peer","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP peer alone is too ambiguous - could be definition or troubleshooting"}}
+{"id":"A4","query":"bgp session","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP session alone is too ambiguous - could be definition or troubleshooting"}}
+{"id":"A5","query":"bgp routing","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP routing is too ambiguous - could be definition, concept, or troubleshooting"}}
+{"id":"A6","query":"bgp protocol","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP protocol is too ambiguous - could be definition, concept, or troubleshooting"}}
+{"id":"A7","query":"bgp network","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP network is too ambiguous - could be definition, concept, or troubleshooting"}}
+{"id":"A8","query":"bgp internet","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP internet is too ambiguous - could be definition, concept, or troubleshooting"}}
+{"id":"A9","query":"bgp as","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP AS is too ambiguous - could be definition, concept, or troubleshooting"}}
+{"id":"A10","query":"bgp autonomous system","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP autonomous system is too ambiguous - could be definition, concept, or troubleshooting"}}
+{"id":"A11","query":"bgp border gateway","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP border gateway is too ambiguous - could be definition, concept, or troubleshooting"}}
+{"id":"A12","query":"bgp gateway","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP gateway is too ambiguous - could be definition, concept, or troubleshooting"}}
+{"id":"A13","query":"bgp route","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP route is too ambiguous - could be definition, concept, or troubleshooting"}}
+{"id":"A14","query":"bgp path","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP path is too ambiguous - could be definition, concept, or troubleshooting"}}
+{"id":"A15","query":"bgp attribute","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP attribute is too ambiguous - could be definition, concept, or troubleshooting"}}
+{"id":"A16","query":"bgp tutorial","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP tutorial could be educational content or troubleshooting guide"}}
+{"id":"A17","query":"bgp best practices","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP best practices could be configuration or troubleshooting guidance"}}
+{"id":"A18","query":"bgp configuration","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP configuration could be setup guide or troubleshooting"}}
+{"id":"A19","query":"bgp setup","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP setup could be initial configuration or troubleshooting"}}
+{"id":"A20","query":"bgp guide","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP guide could be educational or troubleshooting"}}

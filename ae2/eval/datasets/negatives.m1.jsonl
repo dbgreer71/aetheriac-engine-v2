@@ -23,23 +23,7 @@
 {"id":"N23","query":"vendor","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Vendor is too ambiguous - could be any vendor"}}
 {"id":"N24","query":"hardware","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Hardware is too ambiguous - could be any hardware"}}
 {"id":"N25","query":"software","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Software is too ambiguous - could be any software"}}
-{"id":"N26","query":"bgp tutorial","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Tutorial requests are not troubleshooting-specific"}}
+{"id":"N26","query":"how to code bgp in python","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Programming questions are not networking-related"}}
 {"id":"N27","query":"config bgp from scratch","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Configuration tutorials are not troubleshooting-specific"}}
-{"id":"N28","query":"how to code bgp in python","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Programming questions are not networking-related"}}
-{"id":"N29","query":"bgp for beginners","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Educational content requests are not troubleshooting-specific"}}
-{"id":"N30","query":"bgp explained simply","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Explanation requests are not troubleshooting-specific"}}
-{"id":"N31","query":"bgp","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP alone is too ambiguous - could be definition, concept, or troubleshooting"}}
-{"id":"N32","query":"bgp neighbor","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP neighbor alone is too ambiguous - could be definition or troubleshooting"}}
-{"id":"N33","query":"bgp peer","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP peer alone is too ambiguous - could be definition or troubleshooting"}}
-{"id":"N34","query":"bgp session","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP session alone is too ambiguous - could be definition or troubleshooting"}}
-{"id":"N35","query":"bgp routing","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP routing is too ambiguous - could be definition, concept, or troubleshooting"}}
-{"id":"N36","query":"bgp protocol","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP protocol is too ambiguous - could be definition, concept, or troubleshooting"}}
-{"id":"N37","query":"bgp network","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP network is too ambiguous - could be definition, concept, or troubleshooting"}}
-{"id":"N38","query":"bgp internet","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP internet is too ambiguous - could be definition, concept, or troubleshooting"}}
-{"id":"N39","query":"bgp as","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP AS is too ambiguous - could be definition, concept, or troubleshooting"}}
-{"id":"N40","query":"bgp autonomous system","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP autonomous system is too ambiguous - could be definition, concept, or troubleshooting"}}
-{"id":"N41","query":"bgp border gateway","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP border gateway is too ambiguous - could be definition, concept, or troubleshooting"}}
-{"id":"N42","query":"bgp gateway","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP gateway is too ambiguous - could be definition, concept, or troubleshooting"}}
-{"id":"N43","query":"bgp route","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP route is too ambiguous - could be definition, concept, or troubleshooting"}}
-{"id":"N44","query":"bgp path","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP path is too ambiguous - could be definition, concept, or troubleshooting"}}
-{"id":"N45","query":"bgp attribute","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP attribute is too ambiguous - could be definition, concept, or troubleshooting"}} 
+{"id":"N28","query":"bgp for beginners","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Educational content requests are not troubleshooting-specific"}}
+{"id":"N29","query":"bgp explained simply","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Explanation requests are not troubleshooting-specific"}}
