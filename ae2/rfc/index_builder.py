@@ -17,6 +17,12 @@ RULER_NUMS = re.compile(r"^(?:\d+\s+){8,}\d+$")
 ASCII_RULE = re.compile(r"^\s*[-=_+|]{3,}\s*$")
 PLUS_MINUS_RUN = re.compile(r"^\s*(?:\+-){4,}.*$")
 FIGURE_CAPTION = re.compile(r"^\s*Figure\s+\d+:\s*", re.IGNORECASE)
+# RFC boilerplate headers
+STATUS_MEMO = re.compile(r"^\s*Status of this Memo", re.IGNORECASE)
+ABSTRACT = re.compile(r"^\s*Abstract", re.IGNORECASE)
+COPYRIGHT = re.compile(r"^\s*Copyright", re.IGNORECASE)
+# Table rulers and headers
+TABLE_RULER = re.compile(r"^\s*[+\-]{3,}\s*$")
 
 def clean_title(s: str) -> str:
     s = s.strip().strip('"').replace("\t", " ")
@@ -71,6 +77,10 @@ def _parse_rfc_sections(text: str, rfc_number: int) -> List[Dict]:
             if RULER_NUMS.match(ln.strip()):
                 continue
             if FIGURE_CAPTION.match(ln):
+                continue
+            if STATUS_MEMO.match(ln) or ABSTRACT.match(ln) or COPYRIGHT.match(ln):
+                continue
+            if TABLE_RULER.match(ln):
                 continue
             cleaned_lines.append(ln)
         body = "\n".join(cleaned_lines).strip()
