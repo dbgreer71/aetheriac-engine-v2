@@ -125,10 +125,14 @@ def create_ospf_neighbor_playbook() -> Playbook:
 def run_playbook(slug: str, ctx: PlayContext, store: IndexStore) -> PlayResult:
     """Run a playbook with the given context and return deterministic results."""
 
-    if slug != "ospf-neighbor-down":
+    if slug == "ospf-neighbor-down":
+        playbook = create_ospf_neighbor_playbook()
+    elif slug == "bgp-neighbor-down":
+        from .bgp_neighbor_down import create_bgp_neighbor_playbook
+        playbook = create_bgp_neighbor_playbook()
+    else:
         raise ValueError(f"Unknown playbook: {slug}")
 
-    playbook = create_ospf_neighbor_playbook()
     steps = []
 
     # Execute rules in deterministic order
@@ -195,10 +199,13 @@ def _generate_result_text(rule: Rule, ctx: PlayContext) -> str:
 def get_playbook_explanation(slug: str, vendor: str) -> Dict[str, Any]:
     """Get explanation of a playbook's rules and commands."""
 
-    if slug != "ospf-neighbor-down":
+    if slug == "ospf-neighbor-down":
+        playbook = create_ospf_neighbor_playbook()
+    elif slug == "bgp-neighbor-down":
+        from .bgp_neighbor_down import create_bgp_neighbor_playbook
+        playbook = create_bgp_neighbor_playbook()
+    else:
         raise ValueError(f"Unknown playbook: {slug}")
-
-    playbook = create_ospf_neighbor_playbook()
 
     explanation = {"playbook_id": playbook.id, "vendor": vendor, "rules": []}
 

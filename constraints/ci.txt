@@ -8,3 +8,8 @@ jsonschema==4.21.1
 pydantic-settings==2.4.0
 cyclonedx-bom==0.14.0
 pip-audit==2.7.0
+PyJWT==2.8.0
+cryptography==41.0.7
+python-multipart==0.0.6
+bandit==1.7.5
+safety==2.3.5

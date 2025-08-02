@@ -23,6 +23,19 @@ TROUBLESHOOT_KEYWORDS: Set[str] = {
     "failed",
     "issue",
     "problem",
+    "tcp 179",
+    "gtsm",
+    "ttl",
+    "hop limit",
+    "session state",
+    "established",
+    "idle",
+    "active",
+    "connect",
+    "opensent",
+    "openconfirm",
+    "port 179",
+    "multihop",
 }
 
 CONCEPT_KEYWORDS: Set[str] = {
@@ -97,6 +110,18 @@ PLAYBOOK_SLUG_MAP: Dict[str, str] = {
     "ospf neighbor down": "ospf-neighbor-down",
     "ospf stuck": "ospf-neighbor-down",
     "ospf exstart": "ospf-neighbor-down",
+    "bgp neighbor": "bgp-neighbor-down",
+    "bgp neighbor down": "bgp-neighbor-down",
+    "bgp session": "bgp-neighbor-down",
+    "bgp down": "bgp-neighbor-down",
+    "bgp peer": "bgp-neighbor-down",
+    "bgp peer down": "bgp-neighbor-down",
+    "bgp idle": "bgp-neighbor-down",
+    "bgp active": "bgp-neighbor-down",
+    "bgp connect": "bgp-neighbor-down",
+    "bgp opensent": "bgp-neighbor-down",
+    "bgp openconfirm": "bgp-neighbor-down",
+    "bgp established": "bgp-neighbor-down",
 }
 
 

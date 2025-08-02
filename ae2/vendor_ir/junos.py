@@ -17,6 +17,7 @@ def render_junos_command(intent: str, params: Dict[str, Any]) -> List[str]:
 
 # Command intent mappings for Junos
 JUNOS_COMMANDS = {
+    # OSPF commands
     "show_neighbors": "show ospf neighbor",
     "show_iface": "show interfaces {iface} terse",
     "show_ospf_iface": "show ospf interface {iface} detail",
@@ -26,6 +27,15 @@ JUNOS_COMMANDS = {
     "show_ospf_database": "show ospf database",
     "show_ospf_events": "show ospf events",
     "show_ospf_statistics": "show ospf statistics",
+    # BGP commands
+    "show_bgp_summary": "show bgp summary",
+    "show_bgp_neighbor": "show bgp neighbor",
+    "show_bgp_neighbor_detail": "show bgp neighbor {peer} detail",
+    "show_bgp_config": "show configuration protocols bgp | display set",
+    "show_bgp_iface": "show interfaces {iface} terse",
+    "show_system_connections": "show system connections | match 179",
+    "show_firewall": "show firewall",
+    "show_interfaces_terse": "show interfaces terse | match {iface}",
 }
 
 

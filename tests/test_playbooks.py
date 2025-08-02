@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from ae2.api.main import app
 from ae2.playbooks.models import PlayContext
 from ae2.playbooks.engine import run_playbook, get_playbook_explanation
+from ae2.playbooks.bgp_neighbor_down import run_bgp_playbook, get_bgp_playbook_explanation
 from ae2.retriever.index_store import IndexStore
 import os
 
@@ -330,3 +331,172 @@ class TestGoldenScenarios:
         step_ids1 = [step["rule_id"] for step in data1["steps"]]
         step_ids2 = [step["rule_id"] for step in data2["steps"]]
         assert step_ids1 == step_ids2
+
+
+class TestBGPNeighborPlaybook:
+    """Test BGP neighbor-down troubleshooting playbook."""
+
+    def test_playbook_creation(self):
+        """Test that BGP neighbor playbook is created correctly."""
+        from ae2.playbooks.bgp_neighbor_down import create_bgp_neighbor_playbook
+
+        playbook = create_bgp_neighbor_playbook()
+
+        assert playbook.id == "bgp-neighbor-down"
+        assert "BGP" in playbook.applies_to
+        assert len(playbook.rules) == 8  # Expected number of rules
+
+        # Check specific rules exist
+        rule_ids = [rule.id for rule in playbook.rules]
+        expected_rules = [
+            "check_session_state",
+            "check_transport_reachability",
+            "check_authentication",
+            "check_ttl_gtsm",
+            "check_timers",
+            "check_afi_safi",
+            "check_policy",
+            "check_interface_link",
+        ]
+
+        for expected_rule in expected_rules:
+            assert expected_rule in rule_ids
+
+    def test_neighbor_down_basic_iosxe(self, client):
+        """Test basic BGP neighbor down scenario for IOS-XE."""
+        params = {
+            "vendor": "iosxe",
+            "peer": "192.0.2.1",
+            "iface": "GigabitEthernet0/0",
+        }
+
+        response = client.post("/troubleshoot/bgp-neighbor", json=params)
+        assert response.status_code == 200
+
+        result = response.json()
+        assert result["playbook_id"] == "bgp-neighbor-down"
+        assert len(result["steps"]) == 8  # All rules should be included
+        assert result["debug"]["vendor"] == "iosxe"
+        assert result["debug"]["peer"] == "192.0.2.1"
+
+        # Check first step has expected content
+        first_step = result["steps"][0]
+        assert first_step["rule_id"] == "check_session_state"
+        assert "BGP neighbor session state" in first_step["check"]
+        assert len(first_step["commands"]) > 0
+        assert len(first_step["citations"]) > 0
+
+    def test_auth_mismatch_iosxe(self, client):
+        """Test BGP authentication mismatch scenario for IOS-XE."""
+        params = {
+            "vendor": "iosxe",
+            "peer": "192.0.2.1",
+            "iface": "GigabitEthernet0/0",
+        }
+
+        response = client.post("/troubleshoot/bgp-neighbor", json=params)
+        assert response.status_code == 200
+
+        result = response.json()
+        
+        # Find authentication step
+        auth_step = None
+        for step in result["steps"]:
+            if step["rule_id"] == "check_authentication":
+                auth_step = step
+                break
+        
+        assert auth_step is not None
+        assert "authentication" in auth_step["check"].lower()
+        assert "TCP-MD5" in auth_step["check"]
+        assert len(auth_step["commands"]) >= 2
+        assert len(auth_step["citations"]) > 0
+
+    def test_gtsm_iosxe(self, client):
+        """Test BGP GTSM/TTL scenario for IOS-XE."""
+        params = {
+            "vendor": "iosxe",
+            "peer": "192.0.2.1",
+            "iface": "GigabitEthernet0/0",
+        }
+
+        response = client.post("/troubleshoot/bgp-neighbor", json=params)
+        assert response.status_code == 200
+
+        result = response.json()
+        
+        # Find TTL/GTSM step
+        ttl_step = None
+        for step in result["steps"]:
+            if step["rule_id"] == "check_ttl_gtsm":
+                ttl_step = step
+                break
+        
+        assert ttl_step is not None
+        assert "TTL" in ttl_step["check"] or "GTSM" in ttl_step["check"]
+        assert len(ttl_step["commands"]) >= 2
+        assert len(ttl_step["citations"]) > 0
+
+    def test_policy_block_junos(self, client):
+        """Test BGP policy blocking scenario for Junos."""
+        params = {
+            "vendor": "junos",
+            "peer": "192.0.2.1",
+            "iface": "ge-0/0/0",
+        }
+
+        response = client.post("/troubleshoot/bgp-neighbor", json=params)
+        assert response.status_code == 200
+
+        result = response.json()
+        
+        # Find policy step
+        policy_step = None
+        for step in result["steps"]:
+            if step["rule_id"] == "check_policy":
+                policy_step = step
+                break
+        
+        assert policy_step is not None
+        assert "policies" in policy_step["result"].lower()
+        assert "import/export" in policy_step["result"]
+        assert len(policy_step["commands"]) >= 2
+        assert len(policy_step["citations"]) > 0
+
+    def test_deterministic_order(self, client):
+        """Test that BGP playbook produces deterministic ordered steps."""
+        params = {
+            "vendor": "iosxe",
+            "peer": "192.0.2.1",
+            "iface": "GigabitEthernet0/0",
+        }
+
+        response1 = client.post("/troubleshoot/bgp-neighbor", json=params)
+        response2 = client.post("/troubleshoot/bgp-neighbor", json=params)
+
+        assert response1.status_code == 200
+        assert response2.status_code == 200
+
+        result1 = response1.json()
+        result2 = response2.json()
+
+        # Should have same number of steps
+        assert len(result1["steps"]) == len(result2["steps"])
+
+        # Should have same step IDs in same order
+        steps1 = [step["rule_id"] for step in result1["steps"]]
+        steps2 = [step["rule_id"] for step in result2["steps"]]
+        assert steps1 == steps2
+
+        # Verify expected order
+        expected_order = [
+            "check_session_state",
+            "check_transport_reachability", 
+            "check_authentication",
+            "check_ttl_gtsm",
+            "check_timers",
+            "check_afi_safi",
+            "check_policy",
+            "check_interface_link",
+        ]
+        assert steps1 == expected_order

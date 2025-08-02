@@ -15,6 +15,15 @@ eval-concepts:
 eval-trouble:
 	AE_INDEX_DIR=$(PWD)/data/index ENABLE_DENSE=0 python -m ae2.eval.run --suite trouble --dataset sample --json eval_trouble.json --repeats 3 --strict
 
+eval-defs-m1:
+	AE_INDEX_DIR=$(PWD)/data/index ENABLE_DENSE=0 python -m ae2.eval.run --suite defs --dataset m1 --json eval_defs_m1.json --repeats 3 --strict
+
+eval-concepts-m1:
+	AE_INDEX_DIR=$(PWD)/data/index ENABLE_DENSE=0 python -m ae2.eval.run --suite concepts --dataset m1 --json eval_concepts_m1.json --repeats 3 --strict
+
+eval-trouble-m1:
+	AE_INDEX_DIR=$(PWD)/data/index ENABLE_DENSE=0 python -m ae2.eval.run --suite trouble --dataset m1 --json eval_trouble_m1.json --repeats 3 --strict
+
 docker-build:
 	docker build -t aev2:local .
 

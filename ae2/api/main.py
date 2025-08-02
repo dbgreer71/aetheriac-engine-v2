@@ -1,7 +1,8 @@
-from fastapi import FastAPI, Query, HTTPException, Request
+from fastapi import FastAPI, Query, HTTPException, Request, Depends
 from pydantic import BaseModel
 from pathlib import Path
 from contextlib import asynccontextmanager
+from starlette.middleware.cors import CORSMiddleware
 import hashlib
 import json
 import os
@@ -13,8 +14,16 @@ from ae2.concepts.store import ConceptStore
 from ae2.concepts.errors import ConceptCompileError
 from ae2.playbooks.models import PlayContext
 from ae2.playbooks.engine import run_playbook, get_playbook_explanation
+from ae2.playbooks.bgp_neighbor_down import run_bgp_playbook, get_bgp_playbook_explanation
 from ae2.router.router import route
 from ae2.assembler.dispatcher import assemble
+from ae2.security import (
+    get_current_user, get_current_user_optional, require_permission,
+    require_any_permission, SecurityMiddleware, create_cors_middleware,
+    InputValidationMiddleware, AuditMiddleware
+)
+from ae2.security.models import Permission, SecurityConfig
+from ae2.api.auth import router as auth_router
 
 try:
     from ae2.router.definitional_router import get_target_rfcs
@@ -85,7 +94,66 @@ async def lifespan(app: FastAPI):
     logger.info("AE v2 lifespan shutdown")
 
 
+# Initialize security configuration
+security_config = SecurityConfig(
+    secret_key=os.getenv("AE_SECRET_KEY", "your-super-secret-key-change-in-production-32-chars-min"),
+    algorithm=os.getenv("AE_JWT_ALGORITHM", "HS256"),
+    access_token_expire_minutes=int(os.getenv("AE_TOKEN_EXPIRE_MINUTES", "30")),
+    enable_rate_limiting=os.getenv("AE_RATE_LIMITING", "true").lower() == "true",
+    rate_limit_requests=int(os.getenv("AE_RATE_LIMIT_REQUESTS", "100")),
+    enable_cors=os.getenv("AE_ENABLE_CORS", "true").lower() == "true",
+    enable_security_headers=os.getenv("AE_SECURITY_HEADERS", "true").lower() == "true",
+    enable_content_security_policy=os.getenv("AE_CSP", "true").lower() == "true"
+)
+
+def get_auth_dependency(permission: Permission):
+    """Get authentication dependency based on environment setting."""
+    # Check environment variable at runtime
+    disable_auth = os.getenv("AE_DISABLE_AUTH", "false").lower() == "true"
+    if disable_auth:
+        # Return a dummy function that doesn't require authentication
+        def dummy_auth():
+            return None
+        return dummy_auth
+    else:
+        return require_permission(permission)
+
+def get_optional_auth_dependency(permissions: List[Permission]):
+    """Get optional authentication dependency based on environment setting."""
+    # Check environment variable at runtime
+    disable_auth = os.getenv("AE_DISABLE_AUTH", "false").lower() == "true"
+    if disable_auth:
+        # Return a dummy function that doesn't require authentication
+        def dummy_auth():
+            return None
+        return dummy_auth
+    else:
+        return require_any_permission(permissions)
+
 app = FastAPI(title="AE v2", lifespan=lifespan)
+
+# Register security middleware
+app.add_middleware(SecurityMiddleware, config=security_config)
+app.add_middleware(InputValidationMiddleware)
+app.add_middleware(AuditMiddleware)
+
+# Register CORS middleware
+if security_config.enable_cors:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=security_config.allowed_origins,
+        allow_credentials=True,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=[
+            "Authorization",
+            "Content-Type",
+            "Accept",
+            "Origin",
+            "X-Requested-With"
+        ],
+        expose_headers=["X-Total-Count"],
+        max_age=3600,
+    )
 
 # Register observability middleware if enabled
 json_logs_enabled = os.getenv("AE_JSON_LOGS", "1").lower() in ("1", "true", "yes")
@@ -98,6 +166,9 @@ if json_logs_enabled:
         print(f"Observability middleware registered: sample_rate={log_sample_rate:.2f}")
     except ImportError:
         print("Observability middleware not available, continuing without it")
+
+# Include authentication routes
+app.include_router(auth_router)
 
 
 class QueryReq(BaseModel):
@@ -147,7 +218,7 @@ def readyz():
 
 
 @app.get("/metrics")
-def metrics():
+def metrics(current_user = Depends(get_auth_dependency(Permission.READ_METRICS))):
     """Prometheus metrics endpoint."""
     from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
     from fastapi.responses import Response
@@ -156,14 +227,18 @@ def metrics():
 
 
 @app.get("/debug/explain")
-def explain(query: str = Query(...), mode: str = Query("hybrid")):
+def explain(
+    query: str = Query(...), 
+    mode: str = Query("hybrid"),
+    current_user = Depends(get_auth_dependency(Permission.ADMIN_DEBUG))
+):
     targets = get_target_rfcs(query)
     hits = store.search(query, top_k=5, rfc_filter=targets or None, mode=mode)
     return {"router_decision": {"target_rfcs": targets, "mode": mode}, "top_hits": hits}
 
 
 @app.get("/debug/index")
-def debug_index():
+def debug_index(current_user = Depends(get_auth_dependency(Permission.ADMIN_DEBUG))):
     """Return manifest and live hash of sections.jsonl to verify integrity."""
     manifest = getattr(app.state, "manifest", None)
     live_hash = getattr(app.state, "root_hash", None)
@@ -204,6 +279,7 @@ def query(
     mtu: int = Query(None),
     pull: bool = Query(False),
     request: Request = None,
+    current_user = Depends(get_auth_dependency(Permission.READ_QUERY)),
 ):
     # Handle auto mode with unified router
     if mode == "auto":
@@ -296,7 +372,10 @@ def query(
 
 @app.post("/concepts/compile")
 def compile_concept_endpoint(
-    slug: str = Query(...), save: bool = Query(False), pull: bool = Query(False)
+    slug: str = Query(...), 
+    save: bool = Query(False), 
+    pull: bool = Query(False),
+    current_user = Depends(get_optional_auth_dependency([Permission.READ_CONCEPTS, Permission.WRITE_CONCEPTS]))
 ):
     """Compile a concept card for the given slug."""
     if store is None:
@@ -361,7 +440,7 @@ def compile_concept_endpoint(
 
 
 @app.get("/concepts/list")
-def list_concepts():
+def list_concepts(current_user = Depends(get_auth_dependency(Permission.READ_CONCEPTS))):
     """List all concepts with manifest data."""
     if concept_store is None:
         raise HTTPException(status_code=500, detail="Concept store not initialized")
@@ -376,7 +455,10 @@ def list_concepts():
 
 
 @app.post("/concepts/rebuild")
-def rebuild_concept(slug: str = Query(...)):
+def rebuild_concept(
+    slug: str = Query(...),
+    current_user = Depends(get_auth_dependency(Permission.WRITE_CONCEPTS))
+):
     """Rebuild a concept card from the current index."""
     if store is None:
         raise HTTPException(status_code=500, detail="Index store not initialized")
@@ -407,7 +489,10 @@ def rebuild_concept(slug: str = Query(...)):
 
 
 @app.delete("/concepts/{slug}")
-def delete_concept(slug: str):
+def delete_concept(
+    slug: str,
+    current_user = Depends(get_auth_dependency(Permission.WRITE_CONCEPTS))
+):
     """Delete a concept card by slug."""
     if concept_store is None:
         raise HTTPException(status_code=500, detail="Concept store not initialized")
@@ -426,7 +511,7 @@ def delete_concept(slug: str):
 
 
 @app.get("/concepts/schema")
-def get_concept_schema():
+def get_concept_schema(current_user = Depends(get_auth_dependency(Permission.READ_CONCEPTS))):
     """Get JSON schema for concept cards."""
     from ae2.concepts.models import ConceptCard
 
@@ -434,7 +519,10 @@ def get_concept_schema():
 
 
 @app.get("/concepts/validate/{slug}")
-def validate_concept_references(slug: str):
+def validate_concept_references(
+    slug: str,
+    current_user = Depends(get_auth_dependency(Permission.READ_CONCEPTS))
+):
     """Validate references for a concept card."""
     if concept_store is None:
         raise HTTPException(status_code=500, detail="Concept store not initialized")
@@ -449,7 +537,10 @@ def validate_concept_references(slug: str):
 
 @app.get("/concepts/search")
 def search_concepts(
-    q: str = Query(...), limit: int = Query(10), offset: int = Query(0)
+    q: str = Query(...), 
+    limit: int = Query(10), 
+    offset: int = Query(0),
+    current_user = Depends(get_auth_dependency(Permission.READ_CONCEPTS))
 ):
     """Search persisted concept cards."""
     if concept_store is None:
@@ -485,7 +576,7 @@ def search_concepts(
 
 
 @app.get("/concepts/tags")
-def get_concept_tags():
+def get_concept_tags(current_user = Depends(get_auth_dependency(Permission.READ_CONCEPTS))):
     """Get tag counts for all concepts."""
     if concept_store is None:
         raise HTTPException(status_code=500, detail="Concept store not initialized")
@@ -507,7 +598,11 @@ class ExportRequest(BaseModel):
 
 
 @app.post("/concepts/compile_many")
-def compile_many_concepts(request: CompileManyRequest, save: bool = Query(False)):
+def compile_many_concepts(
+    request: CompileManyRequest, 
+    save: bool = Query(False),
+    current_user = Depends(get_optional_auth_dependency([Permission.READ_CONCEPTS, Permission.WRITE_CONCEPTS]))
+):
     """Compile multiple concept cards with bounded concurrency."""
     if store is None:
         raise HTTPException(status_code=500, detail="Index store not initialized")
@@ -568,7 +663,10 @@ def compile_many_concepts(request: CompileManyRequest, save: bool = Query(False)
 
 
 @app.post("/concepts/export")
-def export_concepts(request: ExportRequest = None):
+def export_concepts(
+    request: ExportRequest = None,
+    current_user = Depends(get_auth_dependency(Permission.READ_CONCEPTS))
+):
     """Export concepts to a ZIP file."""
     if concept_store is None:
         raise HTTPException(status_code=500, detail="Concept store not initialized")
@@ -594,7 +692,11 @@ def export_concepts(request: ExportRequest = None):
 
 
 @app.get("/concepts/diff/{slug}")
-def get_concept_diff(slug: str, recompile: bool = Query(True)):
+def get_concept_diff(
+    slug: str, 
+    recompile: bool = Query(True),
+    current_user = Depends(get_auth_dependency(Permission.READ_CONCEPTS))
+):
     """Get diff between stored and current concept card."""
     if store is None:
         raise HTTPException(status_code=500, detail="Index store not initialized")
@@ -637,7 +739,10 @@ def get_concept_diff(slug: str, recompile: bool = Query(True)):
 
 
 @app.get("/concepts/{slug}")
-def get_concept_by_slug(slug: str):
+def get_concept_by_slug(
+    slug: str,
+    current_user = Depends(get_auth_dependency(Permission.READ_CONCEPTS))
+):
     """Get a concept card by slug."""
     if concept_store is None:
         raise HTTPException(status_code=500, detail="Concept store not initialized")
@@ -663,7 +768,10 @@ def get_concept_by_slug(slug: str):
 
 
 @app.get("/debug/concept/{card_id}")
-def debug_concept(card_id: str):
+def debug_concept(
+    card_id: str,
+    current_user = Depends(get_auth_dependency(Permission.ADMIN_DEBUG))
+):
     """Get a concept card with retrieval trace for debugging."""
     if store is None or concept_store is None:
         raise HTTPException(status_code=500, detail="Stores not initialized")
@@ -691,7 +799,10 @@ def debug_concept(card_id: str):
 
 
 @app.post("/troubleshoot/ospf-neighbor")
-def troubleshoot_ospf_neighbor(ctx: PlayContext):
+def troubleshoot_ospf_neighbor(
+    ctx: PlayContext,
+    current_user = Depends(get_auth_dependency(Permission.READ_PLAYBOOKS))
+):
     """Execute OSPF neighbor-down troubleshooting playbook."""
     if store is None:
         raise HTTPException(status_code=500, detail="Index store not initialized")
@@ -707,18 +818,53 @@ def troubleshoot_ospf_neighbor(ctx: PlayContext):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/troubleshoot/bgp-neighbor")
+def troubleshoot_bgp_neighbor(
+    ctx: PlayContext,
+    current_user = Depends(get_auth_dependency(Permission.READ_PLAYBOOKS))
+):
+    """Execute BGP neighbor-down troubleshooting playbook."""
+    if store is None:
+        raise HTTPException(status_code=500, detail="Index store not initialized")
+
+    try:
+        result = run_bgp_playbook(ctx, store)
+        return {
+            "playbook_id": result.playbook_id,
+            "steps": [step.model_dump() for step in result.steps],
+            "debug": {
+                "matched_rules": len(result.steps),
+                "vendor": ctx.vendor,
+                "peer": ctx.peer,
+                "iface": ctx.iface,
+            },
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/debug/explain_playbook")
-def explain_playbook(slug: str = Query(...), vendor: str = Query(...)):
+def explain_playbook(
+    slug: str = Query(...), 
+    vendor: str = Query(...),
+    current_user = Depends(get_auth_dependency(Permission.ADMIN_DEBUG))
+):
     """Get explanation of a playbook's rules and commands."""
     try:
-        explanation = get_playbook_explanation(slug, vendor)
+        if slug == "bgp-neighbor-down":
+            explanation = get_bgp_playbook_explanation(vendor)
+        else:
+            explanation = get_playbook_explanation(slug, vendor)
         return explanation
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/debug/route")
-def debug_route(query: str = Query(...)):
+def debug_route(
+    query: str = Query(...),
+    current_user = Depends(get_auth_dependency(Permission.ADMIN_DEBUG))
+):
     """Get routing decision for a query without assembly."""
     if store is None or concept_store is None:
         raise HTTPException(status_code=500, detail="Stores not initialized")

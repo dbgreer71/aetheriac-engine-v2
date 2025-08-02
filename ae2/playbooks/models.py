@@ -49,10 +49,12 @@ class PlayContext(BaseModel):
     """Context for executing a playbook."""
 
     vendor: Literal["iosxe", "junos"] = Field(..., description="Target vendor")
-    iface: str = Field(..., description="Interface name")
+    iface: Optional[str] = Field(None, description="Interface name")
     area: Optional[str] = Field(None, description="OSPF area ID")
     auth: Optional[str] = Field(None, description="Authentication type")
     mtu: Optional[int] = Field(None, description="Interface MTU")
+    peer: Optional[str] = Field(None, description="BGP peer IP address")
+    vrf: Optional[str] = Field(None, description="VRF name")
 
 
 class PlayResultStep(BaseModel):

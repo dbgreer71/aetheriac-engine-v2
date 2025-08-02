@@ -463,28 +463,55 @@ def check_thresholds(report: Dict, strict: bool = False) -> bool:
         return True
 
     suite = report["suite"]
+    dataset = report.get("dataset", "sample")
     metrics = report["metrics"]
 
+    # Determine if this is M1 dataset
+    is_m1 = dataset == "m1"
+
     if suite == "defs":
-        thresholds = {
-            "intent_acc": 0.50,  # Lowered for plumbing
-            "target_acc": 0.50,  # Lowered for plumbing
-            "p_at_3": 0.30,  # Lowered for plumbing
-            "ndcg_at_3": 0.50,  # Lowered for plumbing
-            "p95_latency": 1000.0,  # Relaxed for plumbing
-        }
+        if is_m1:
+            thresholds = {
+                "intent_acc": 0.80,  # Raised for M1
+                "target_acc": 0.75,  # Raised for M1
+                "p_at_3": 0.60,  # Raised for M1
+                "ndcg_at_3": 0.70,  # Raised for M1
+                "p95_latency": 1000.0,  # Same latency threshold
+            }
+        else:
+            thresholds = {
+                "intent_acc": 0.50,  # Lowered for plumbing
+                "target_acc": 0.50,  # Lowered for plumbing
+                "p_at_3": 0.30,  # Lowered for plumbing
+                "ndcg_at_3": 0.50,  # Lowered for plumbing
+                "p95_latency": 1000.0,  # Relaxed for plumbing
+            }
     elif suite == "concepts":
-        thresholds = {
-            "faithfulness": 0.50,  # Lowered for plumbing
-            "citation_validity": 0.50,  # Lowered for plumbing
-            "p95_latency": 1000.0,  # Relaxed for plumbing
-        }
+        if is_m1:
+            thresholds = {
+                "faithfulness": 0.80,  # Raised for M1
+                "citation_validity": 0.75,  # Raised for M1
+                "p95_latency": 1000.0,  # Same latency threshold
+            }
+        else:
+            thresholds = {
+                "faithfulness": 0.50,  # Lowered for plumbing
+                "citation_validity": 0.50,  # Lowered for plumbing
+                "p95_latency": 1000.0,  # Relaxed for plumbing
+            }
     elif suite == "trouble":
-        thresholds = {
-            "pass_min_steps": 0.20,  # Lowered for plumbing
-            "deterministic": 0.50,  # Lowered for plumbing
-            "p95_latency": 1000.0,  # Relaxed for plumbing
-        }
+        if is_m1:
+            thresholds = {
+                "pass_min_steps": 0.70,  # Raised for M1
+                "deterministic": 0.80,  # Raised for M1
+                "p95_latency": 1000.0,  # Same latency threshold
+            }
+        else:
+            thresholds = {
+                "pass_min_steps": 0.20,  # Lowered for plumbing
+                "deterministic": 0.50,  # Lowered for plumbing
+                "p95_latency": 1000.0,  # Relaxed for plumbing
+            }
     else:
         return True
 
@@ -515,7 +542,7 @@ def main():
         required=True,
         help="Evaluation suite to run",
     )
-    parser.add_argument("--dataset", default="sample", help="Dataset name")
+    parser.add_argument("--dataset", default="sample", help="Dataset name (sample or m1)")
     parser.add_argument("--json", required=True, help="Output JSON file path")
     parser.add_argument("--repeats", type=int, default=1, help="Number of repeat runs")
     parser.add_argument("--strict", action="store_true", help="Enforce thresholds")
