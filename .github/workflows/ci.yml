@@ -34,7 +34,7 @@ jobs:
           set -euox pipefail
           python -m pip install -U pip wheel
           python -m pip install -c constraints/ci.txt -e .
-          python -m pip install -c constraints/ci.txt pytest
+          python -m pip install -c constraints/ci.txt pytest httpx
           python -m pip freeze > ci_pip_freeze.txt
 
       - name: Prepare index
