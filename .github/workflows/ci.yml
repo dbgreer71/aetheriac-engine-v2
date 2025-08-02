@@ -73,6 +73,20 @@ jobs:
           name: ci_smoke_log
           path: ci_pytest_smoke.log
 
+      - name: Build and check wheels
+        run: |
+          python -m build
+          python -m twine check dist/*
+
+      - name: Upload python-dist artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 3
+
   ci-full:
     if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || contains(github.event.head_commit.message, '[full-ci]') }}
     runs-on: ubuntu-latest
