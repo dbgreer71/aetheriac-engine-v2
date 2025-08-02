@@ -88,6 +88,39 @@ PROTOCOL_KEYWORDS: Set[str] = {
     "ip",
 }
 
+# BGP-specific terms for robust signal detection
+BGP_TERMS: Set[str] = {
+    "bgp",
+    "neighbor",
+    "peer",
+    "idle",
+    "active",
+    "opensent",
+    "openconfirm",
+    "established",
+    "fsm",
+    "flap",
+    "ttl",
+    "gtsm",
+    "multihop",
+    "md5",
+    "session",
+    "dampening",
+    "authentication",
+    "keychain",
+    "timers",
+    "keepalive",
+    "holdtime",
+    "afi",
+    "safi",
+    "address family",
+    "route policy",
+    "route map",
+    "asn",
+    "local as",
+    "remote as",
+}
+
 # Vendor keywords for troubleshooting
 VENDOR_KEYWORDS: Set[str] = {
     "iosxe",
@@ -136,6 +169,7 @@ PLAYBOOK_SLUG_MAP: Dict[str, str] = {
     "ospf neighbor down": "ospf-neighbor-down",
     "ospf stuck": "ospf-neighbor-down",
     "ospf exstart": "ospf-neighbor-down",
+    "bgp": "bgp-neighbor-down",
     "bgp neighbor": "bgp-neighbor-down",
     "bgp neighbor down": "bgp-neighbor-down",
     "bgp session": "bgp-neighbor-down",
