@@ -383,7 +383,7 @@ class EvaluationRunner:
             "failures": [
                 {
                     "id": failure["case_id"],
-                    "reason": f"Expected ABSTAIN, got {failure['actual']['intent']}"
+                    "reason": f"Expected ABSTAIN, got {failure['actual'].get('intent', 'ERROR')}"
                 }
                 for failure in results["failures"]
             ],

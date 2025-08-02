@@ -117,11 +117,6 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
                         mode_used="hybrid",
                     )
                 )
-        """Cache the decision and return it."""
-        if CACHE_AVAILABLE:
-            cache_key = f"route:{query}"
-            cache_set(cache_key, decision)
-        return decision
 
     # Check for troubleshooting intent first (highest priority)
     is_troubleshoot, troubleshoot_matches, vendor = extract_troubleshoot_terms(query)
