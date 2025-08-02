@@ -11,6 +11,7 @@ AE v2 is a complete rewrite of the Aetheriac Engine with the following key impro
 - **Modular architecture**: Clear separation of concerns with independent packages
 - **Scientific rigor**: Comprehensive testing, manifests, and traceable provenance
 - **Performance**: Hybrid dense/sparse retrieval with sub-500ms response times
+- **Hybrid reranker**: BM25 + TF-IDF scoring with configurable weights and debug subscores
 
 ## Architecture
 
@@ -18,7 +19,7 @@ AE v2 is a complete rewrite of the Aetheriac Engine with the following key impro
 
 - **Contracts** (`ae2/contracts/`): Pydantic models defining all data structures
 - **RFC Intake** (`ae2/rfc/`): Downloads and sectionizes RFC documents
-- **Retriever** (`ae2/retriever/`): Hybrid dense/sparse search with BM25 + embeddings
+- **Retriever** (`ae2/retriever/`): Hybrid dense/sparse search with BM25 + TF-IDF + embeddings
 - **Router** (`ae2/router/`): Query classification and routing
 - **Assembler** (`ae2/assembler/`): Response construction from retrieved content
 - **API** (`ae2/api/`): FastAPI application with health checks and debug endpoints
@@ -27,10 +28,10 @@ AE v2 is a complete rewrite of the Aetheriac Engine with the following key impro
 ### Data Flow
 
 1. **RFC Sync**: Downloads RFC documents and sectionizes them into searchable chunks
-2. **Index Building**: Creates hybrid indexes (dense embeddings + BM25 sparse)
+2. **Index Building**: Creates hybrid indexes (dense embeddings + BM25 sparse + TF-IDF)
 3. **Query Processing**: 
    - Router classifies query intent
-   - Retriever finds relevant sections
+   - Retriever finds relevant sections using configurable ranking modes
    - Assembler constructs coherent response
 4. **Response**: Returns structured response with citations and confidence scores
 
@@ -63,22 +64,25 @@ Key environment variables:
 
 ```bash
 # API settings
+AE_BIND_PORT=8000
 API_HOST=0.0.0.0
-API_PORT=8000
+
+# Index and data directories
+AE_INDEX_DIR=data/index
+DATA_DIR=data
 
 # Feature flags
+ENABLE_DENSE=1
 ENABLE_RFC=true
 STRICT_DEFINITIONS=true
 ENABLE_PLAYBOOKS=false
 
+# Hybrid reranker weights (default: 60% TF-IDF, 40% BM25)
+HYBRID_W_TFIDF=0.6
+HYBRID_W_BM25=0.4
+
 # Model settings
 EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
-HYBRID_WEIGHT=0.7
-
-# Data directories
-DATA_DIR=data
-INDEX_DIR=data/index
-RFC_DIR=data/rfc_index
 ```
 
 ## Usage
@@ -89,11 +93,12 @@ RFC_DIR=data/rfc_index
 # Start the API server
 python -m ae2.api.main
 
-# Or use the CLI
-ae2-api
+# Or with custom configuration
+AE_INDEX_DIR="$(pwd)/data/index" AE_BIND_PORT=8001 ENABLE_DENSE=0 \
+python -m ae2.api.main
 ```
 
-The API will be available at `http://localhost:8000`
+The API will be available at `http://localhost:8000` (or configured port)
 
 ### API Endpoints
 
@@ -131,6 +136,71 @@ Response:
 }
 ```
 
+#### Hybrid Reranker (BM25 + TF-IDF)
+
+The API supports three ranking modes via the `mode` parameter:
+
+- `tfidf`: Traditional TF-IDF scoring
+- `bm25`: BM25 probabilistic scoring  
+- `hybrid`: Weighted combination of both (default)
+
+**Debug Explain Endpoint:**
+```bash
+curl "http://localhost:8000/debug/explain?query=what%20is%20ospf&mode=hybrid"
+```
+
+Response with subscores:
+```json
+{
+  "router_decision": {
+    "target_rfcs": [2328],
+    "mode": "hybrid"
+  },
+  "top_hits": [
+    {
+      "rfc": 2328,
+      "section": "1.1",
+      "title": "1.1. Protocol overview",
+      "score": 0.4342315322622336,
+      "scores": {
+        "tfidf": 0.04043485395128395,
+        "bm25": 0.524926549728658,
+        "hybrid": 0.2342315322622336
+      }
+    }
+  ]
+}
+```
+
+**Query Endpoint with Mode:**
+```bash
+curl -X POST "http://localhost:8000/query?mode=hybrid" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"What is ARP?","top_k":3}'
+```
+
+Response with debug scores:
+```json
+{
+  "answer": "RFC 826",
+  "citations": [
+    {
+      "citation_text": "RFC 826 §1 — RFC 826",
+      "url": "https://www.rfc-editor.org/rfc/rfc826.txt"
+    }
+  ],
+  "mode": "hybrid",
+  "debug": {
+    "score": 0.23111070354699204,
+    "scores": {
+      "tfidf": 0.018862965789201526,
+      "bm25": 0.3494823101836778,
+      "hybrid": 0.15111070354699205
+    }
+  }
+}
+```
+
 #### Debug Endpoints
 
 ```bash
@@ -145,6 +215,43 @@ curl -X POST "http://localhost:8000/debug/search" \
   -H "Content-Type: application/json" \
   -d '{"text": "What is ARP?"}'
 ```
+
+### Ranking Sanity Check
+
+Test the hybrid reranker with these commands:
+
+```bash
+# Start server
+AE_INDEX_DIR="$(pwd)/data/index" AE_BIND_PORT=8001 ENABLE_DENSE=0 \
+python -m ae2.api.main &
+
+# Health check
+curl -s http://localhost:8001/healthz | jq .
+
+# Test hybrid mode
+curl -s "http://localhost:8001/debug/explain?query=what%20is%20ospf&mode=hybrid" | jq .
+
+# Test query endpoint
+curl -s -X POST "http://localhost:8001/query?mode=hybrid" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"What is ARP?","top_k":3}' | jq .
+```
+
+Expected results:
+- `/healthz` shows correct section count and manifest present
+- `/debug/explain?...&mode=hybrid` returns `scores.tfidf`, `scores.bm25`, `scores.hybrid`
+- `/query?mode=hybrid` returns clean citations (RFC §, title)
+
+### Troubleshooting
+
+**Server appears hung during startup:**
+- Rebuild the index: `python scripts/build_index.py`
+- Ensure port 8001 is free: `lsof -i :8001`
+- Check index files exist: `ls -la data/index/`
+
+**Missing BM25 tokens:**
+- The system will fallback to TF-IDF only if `bm25_tokens.npy` is missing
+- Rebuild index to regenerate: `python scripts/build_index.py`
 
 ### RFC Synchronization
 
