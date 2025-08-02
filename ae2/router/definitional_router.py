@@ -2,7 +2,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import List
 from ae2.contracts.models import Query
-from ae2.router.lexicon import LEXICON  # dict with "protocol_terms"
+from ae2.router.lexicon import LEXICON  # must provide "protocol_terms"
 
 
 @dataclass

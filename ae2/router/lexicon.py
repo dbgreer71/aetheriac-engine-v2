@@ -88,15 +88,6 @@ LEXICON: Dict[str, List[str]] = {
         "tcp",
         "udp",
         "dns",
-        "bgp",
-        "ip",
-        "ipv6",
-        "icmp",
-        "dhcp",
-        "vlan",
-        "stp",
-        "rstp",
-        "mstp",
     ],
 }
 
