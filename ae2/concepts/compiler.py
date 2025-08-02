@@ -6,7 +6,7 @@ This module compiles concept cards from RFC search results using the IndexStore.
 
 import hashlib
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 from ..retriever.index_store import IndexStore
@@ -179,11 +179,19 @@ def compile_concept(
         if not section_text:
             continue  # Skip sections without text
 
-        # Create evidence for this claim
+        # Create evidence for this claim with enhanced fields
         evidence = Evidence(
             type="rfc",
             url_or_path=f"https://www.rfc-editor.org/rfc/rfc{section['rfc_number']}.txt",
             sha256=_compute_sha256(section_text),
+            length=len(section_text),
+            source={
+                "type": "rfc",
+                "rfc_number": section["rfc_number"],
+                "section": section["section"],
+                "title": section.get("title", ""),
+                "url": f"https://www.rfc-editor.org/rfc/rfc{section['rfc_number']}.txt",
+            },
         )
 
         claim = Claim(
@@ -194,13 +202,32 @@ def compile_concept(
         )
         claims.append(claim)
 
+    # Get the current index root hash for provenance
+    index_root_hash = None
+    try:
+        # Try to get the root hash from the sections.jsonl file
+        sections_path = index_store.index_dir / "sections.jsonl"
+        if sections_path.exists():
+            import hashlib
+
+            h = hashlib.sha256()
+            with sections_path.open("rb") as f:
+                for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                    h.update(chunk)
+            index_root_hash = h.hexdigest()
+    except Exception:
+        # If we can't get the root hash, continue without it
+        pass
+
     # Create the concept card
     card_id = f"concept:{slug}:v1"
     card = ConceptCard(
         id=card_id,
         definition=definition,
         claims=claims,
-        provenance=Provenance(built_at=datetime.utcnow()),
+        provenance=Provenance(
+            built_at=datetime.now(timezone.utc), index_root_hash=index_root_hash
+        ),
     )
 
     # Save to store if provided
