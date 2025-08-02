@@ -162,12 +162,7 @@ class TestTroubleshootingRouting:
         """Test OSPF MTU mismatch troubleshooting."""
         response = client.post(
             "/query?mode=auto",
-            json={
-                "query": "ospf mtu mismatch",
-                "vendor": "iosxe",
-                "iface": "GigabitEthernet0/0",
-                "mtu": 1500,
-            },
+            json={"query": "iosxe ospf mtu mismatch gigabitethernet0/0"},
         )
         assert response.status_code == 200
 
@@ -176,6 +171,22 @@ class TestTroubleshootingRouting:
         assert data["route"]["target"] == "ospf-neighbor-down"
         assert "steps" in data
         assert len(data["steps"]) > 0
+        assert data["mode"] == "auto"
+
+    def test_bgp_troubleshoot_target(self, client):
+        """Test BGP neighbor-down troubleshooting routing."""
+        response = client.post(
+            "/query?mode=auto",
+            json={"query": "iosxe bgp neighbor down 192.0.2.1"},
+        )
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["intent"] == "TROUBLESHOOT"
+        assert data["route"]["target"] == "bgp-neighbor-down"
+        assert "steps" in data
+        assert len(data["steps"]) >= 8  # BGP playbook has 8 steps
+        assert data["mode"] == "auto"
 
 
 class TestDebugEndpoints:

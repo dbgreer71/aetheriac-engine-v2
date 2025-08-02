@@ -58,3 +58,37 @@ def test_debug_index_endpoint(app_client):
     # accept either count or sections key
     count = body.get("concepts_count") or body.get("sections") or 0
     assert isinstance(count, int)
+
+
+def test_bgp_endpoint_smoke(app_client):
+    """Test POST /troubleshoot/bgp-neighbor endpoint."""
+    # Set environment to disable auth for testing
+    import os
+    os.environ["AE_DISABLE_AUTH"] = "true"
+    
+    response = app_client.post(
+        "/troubleshoot/bgp-neighbor",
+        json={"vendor": "iosxe", "peer": "192.0.2.1"}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert "steps" in body
+    assert len(body["steps"]) >= 8  # BGP playbook should have 8 steps
+
+
+def test_auto_bgp_route_smoke(app_client):
+    """Test POST /query?mode=auto with BGP query."""
+    # Set environment to disable auth for testing
+    import os
+    os.environ["AE_DISABLE_AUTH"] = "true"
+    
+    response = app_client.post(
+        "/query?mode=auto",
+        json={"query": "iosxe bgp neighbor down 192.0.2.1"}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert "intent" in body
+    assert body["intent"] == "TROUBLESHOOT"
+    assert "steps" in body
+    assert len(body["steps"]) >= 8  # Should route to BGP playbook with 8 steps
