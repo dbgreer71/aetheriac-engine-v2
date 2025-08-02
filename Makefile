@@ -24,6 +24,9 @@ eval-concepts-m1:
 eval-trouble-m1:
 	AE_INDEX_DIR=$(PWD)/data/index ENABLE_DENSE=0 python -m ae2.eval.run --suite trouble --dataset m1 --json eval_trouble_m1.json --repeats 3 --strict
 
+eval-negatives-m1:
+	AE_INDEX_DIR=$(PWD)/data/index ENABLE_DENSE=0 python -m ae2.eval.run --suite negatives --dataset m1 --json eval_negatives_m1.json --repeats 3 --strict
+
 docker-build:
 	docker build -t aev2:local .
 

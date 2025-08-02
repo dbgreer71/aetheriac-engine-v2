@@ -1,0 +1,73 @@
+{
+  "suite": "concepts",
+  "dataset": "concepts.m1",
+  "ts": "2025-08-02T21:09:28.703205Z",
+  "counts": {
+    "total": 20,
+    "ok": 8
+  },
+  "metrics": {
+    "latency_ms": {
+      "p50": 0.001,
+      "p95": 0.001,
+      "p99": 0.001,
+      "avg": 0.001
+    },
+    "faithfulness": 1.0,
+    "citation_validity": 1.0
+  },
+  "failures": [
+    {
+      "id": "C3",
+      "reason": "Missing required fields or insufficient claims"
+    },
+    {
+      "id": "C4",
+      "reason": "Missing required fields or insufficient claims"
+    },
+    {
+      "id": "C6",
+      "reason": "Missing required fields or insufficient claims"
+    },
+    {
+      "id": "C8",
+      "reason": "Missing required fields or insufficient claims"
+    },
+    {
+      "id": "C11",
+      "reason": "Missing required fields or insufficient claims"
+    },
+    {
+      "id": "C12",
+      "reason": "Missing required fields or insufficient claims"
+    },
+    {
+      "id": "C14",
+      "reason": "Missing required fields or insufficient claims"
+    },
+    {
+      "id": "C15",
+      "reason": "Missing required fields or insufficient claims"
+    },
+    {
+      "id": "C17",
+      "reason": "Missing required fields or insufficient claims"
+    },
+    {
+      "id": "C18",
+      "reason": "Missing required fields or insufficient claims"
+    },
+    {
+      "id": "C19",
+      "reason": "Missing required fields or insufficient claims"
+    },
+    {
+      "id": "C20",
+      "reason": "Missing required fields or insufficient claims"
+    }
+  ],
+  "hashes": {
+    "dataset_sha256": "6c5c5c3f6bfb71d9ee364a5b733810a377a2c4aadcad32c7525a25c2912b7537",
+    "code_rev": "701dfcf"
+  }
+}

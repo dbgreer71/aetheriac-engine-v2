@@ -10,7 +10,6 @@ from fastapi.testclient import TestClient
 from ae2.api.main import app
 from ae2.playbooks.models import PlayContext
 from ae2.playbooks.engine import run_playbook, get_playbook_explanation
-from ae2.playbooks.bgp_neighbor_down import run_bgp_playbook, get_bgp_playbook_explanation
 from ae2.retriever.index_store import IndexStore
 import os
 
@@ -398,14 +397,14 @@ class TestBGPNeighborPlaybook:
         assert response.status_code == 200
 
         result = response.json()
-        
+
         # Find authentication step
         auth_step = None
         for step in result["steps"]:
             if step["rule_id"] == "check_authentication":
                 auth_step = step
                 break
-        
+
         assert auth_step is not None
         assert "authentication" in auth_step["check"].lower()
         assert "TCP-MD5" in auth_step["check"]
@@ -424,14 +423,14 @@ class TestBGPNeighborPlaybook:
         assert response.status_code == 200
 
         result = response.json()
-        
+
         # Find TTL/GTSM step
         ttl_step = None
         for step in result["steps"]:
             if step["rule_id"] == "check_ttl_gtsm":
                 ttl_step = step
                 break
-        
+
         assert ttl_step is not None
         assert "TTL" in ttl_step["check"] or "GTSM" in ttl_step["check"]
         assert len(ttl_step["commands"]) >= 2
@@ -449,14 +448,14 @@ class TestBGPNeighborPlaybook:
         assert response.status_code == 200
 
         result = response.json()
-        
+
         # Find policy step
         policy_step = None
         for step in result["steps"]:
             if step["rule_id"] == "check_policy":
                 policy_step = step
                 break
-        
+
         assert policy_step is not None
         assert "policies" in policy_step["result"].lower()
         assert "import/export" in policy_step["result"]
@@ -491,7 +490,7 @@ class TestBGPNeighborPlaybook:
         # Verify expected order
         expected_order = [
             "check_session_state",
-            "check_transport_reachability", 
+            "check_transport_reachability",
             "check_authentication",
             "check_ttl_gtsm",
             "check_timers",

@@ -17,4 +17,4 @@
 {"id":"C17","slug":"nat","query":"nat concept card","expected":{"fields_present":["definition","claims"],"min_claims":2}}
 {"id":"C18","slug":"firewall","query":"firewall concept card","expected":{"fields_present":["definition","claims"],"min_claims":2}}
 {"id":"C19","slug":"vpn","query":"vpn concept card","expected":{"fields_present":["definition","claims"],"min_claims":2}}
-{"id":"C20","slug":"routing","query":"routing concept card","expected":{"fields_present":["definition","claims"],"min_claims":3}} 
+{"id":"C20","slug":"routing","query":"routing concept card","expected":{"fields_present":["definition","claims"],"min_claims":3}}

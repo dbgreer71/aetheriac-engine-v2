@@ -5,7 +5,7 @@
   "properties": {
     "suite": {
       "type": "string",
-      "enum": ["defs", "concepts", "trouble"]
+      "enum": ["defs", "concepts", "trouble", "negatives"]
     },
     "dataset": {
       "type": "string"
@@ -90,6 +90,16 @@
           "maximum": 1.0
         },
         "deterministic": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "abstain_accuracy": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0
+        },
+        "false_positive_rate": {
           "type": "number",
           "minimum": 0.0,
           "maximum": 1.0

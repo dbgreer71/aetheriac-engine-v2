@@ -34,6 +34,7 @@ try:
     from ..assembler.definition_assembler import DefinitionAssembler
     from ..router.router import route
     from ..concepts.store import ConceptStore
+    from ..retriever.index_store import IndexStore
 except ImportError as e:
     print(f"Error importing AE v2 modules: {e}")
     print("Make sure you're running from the project root with proper PYTHONPATH")
@@ -53,6 +54,7 @@ class EvaluationRunner:
         # Initialize AE v2 components
         self.definition_assembler = DefinitionAssembler()
         self.concept_store = ConceptStore()
+        self.index_store = IndexStore(index_dir)
 
         # Load concept cards if available
         self._load_concept_cards()
@@ -293,6 +295,106 @@ class EvaluationRunner:
             },
         }
 
+    def run_negatives_evaluation(self, dataset_path: str, repeats: int = 1) -> Dict:
+        """Run negatives evaluation suite."""
+        self.logger.info(f"Running negatives evaluation on {dataset_path}")
+
+        # Load dataset
+        cases = self._load_jsonl_dataset(dataset_path)
+
+        results = {
+            "abstain_correct": 0,
+            "false_positives": 0,
+            "total": len(cases),
+            "ok": 0,
+            "failures": [],
+        }
+
+        for case in cases:
+            case_id = case["id"]
+            query_text = case["query"]
+            expected = case["expected"]
+
+            try:
+                # Run evaluation with timing
+                start_time = time.time()
+
+                # Route query
+                stores = {"concept_store": self.concept_store}
+                route_result = route(query_text, stores)
+
+                # Check if result abstains correctly
+                if route_result.intent == "ABSTAIN":
+                    results["abstain_correct"] += 1
+                    results["ok"] += 1
+                else:
+                    results["false_positives"] += 1
+                    results["failures"].append({
+                        "case_id": case_id,
+                        "query": query_text,
+                        "expected": expected,
+                        "actual": {
+                            "intent": route_result.intent,
+                            "target": route_result.target,
+                            "confidence": route_result.confidence,
+                            "notes": route_result.notes
+                        }
+                    })
+
+                # Record latency
+                latency = (time.time() - start_time) * 1000
+                results.setdefault("latency_samples", []).append(latency)
+
+            except Exception as e:
+                self.logger.error(f"Error processing case {case_id}: {e}")
+                results["failures"].append({
+                    "case_id": case_id,
+                    "query": query_text,
+                    "expected": expected,
+                    "actual": {"error": str(e)}
+                })
+
+        # Calculate metrics
+        if results["total"] > 0:
+            results["abstain_accuracy"] = results["abstain_correct"] / results["total"]
+            results["false_positive_rate"] = results["false_positives"] / results["total"]
+        else:
+            results["abstain_accuracy"] = 0.0
+            results["false_positive_rate"] = 0.0
+
+        # Add latency stats
+        if results.get("latency_samples"):
+            results["latency_ms"] = latency_stats(results["latency_samples"])
+
+        # Format report to match schema
+        report = {
+            "suite": "negatives",
+            "dataset": "m1",
+            "ts": datetime.now().isoformat(),
+            "counts": {
+                "total": results["total"],
+                "ok": results["ok"]
+            },
+            "metrics": {
+                "abstain_accuracy": results["abstain_accuracy"],
+                "false_positive_rate": results["false_positive_rate"],
+                "latency_ms": results.get("latency_ms", {})
+            },
+            "failures": [
+                {
+                    "id": failure["case_id"],
+                    "reason": f"Expected ABSTAIN, got {failure['actual']['intent']}"
+                }
+                for failure in results["failures"]
+            ],
+            "hashes": {
+                "dataset_sha256": calculate_dataset_hash(dataset_path),
+                "code_rev": get_git_revision()
+            }
+        }
+
+        return report
+
     def run_troubleshooting_evaluation(
         self, dataset_path: str, repeats: int = 1
     ) -> Dict:
@@ -321,16 +423,51 @@ class EvaluationRunner:
                 # Run evaluation with timing
                 start_time = time.time()
 
-                # Get troubleshooting steps (simplified for evaluation)
-                steps_result = {
-                    "steps": [
-                        {
-                            "description": f"Check {query_text}",
-                            "commands": ["show commands"],
-                            "citations": [],
-                        }
-                    ]
-                }
+                # Route query to get intent
+                stores = {"concept_store": self.concept_store}
+                route_result = route(query_text, stores)
+                
+                # Get troubleshooting steps based on intent
+                if route_result.intent == "TROUBLESHOOT":
+                    # Use actual playbook system
+                    from ..playbooks.models import PlayContext
+                    from ..playbooks.bgp_neighbor_down import run_bgp_playbook
+                    
+                    # Extract context from query
+                    ctx = PlayContext(
+                        vendor=case.get("ctx", {}).get("vendor", "iosxe"),
+                        peer=case.get("ctx", {}).get("peer"),
+                        iface=case.get("ctx", {}).get("iface"),
+                        area=case.get("ctx", {}).get("area"),
+                        auth=case.get("ctx", {}).get("auth"),
+                        mtu=case.get("ctx", {}).get("mtu"),
+                        vrf=case.get("ctx", {}).get("vrf"),
+                    )
+                    
+                    # Run BGP playbook
+                    playbook_result = run_bgp_playbook(ctx, self.index_store)
+                    
+                    steps_result = {
+                        "steps": [
+                            {
+                                "description": step.check,
+                                "commands": step.commands,
+                                "citations": [{"rfc": c.rfc, "section": c.section} for c in step.citations],
+                            }
+                            for step in playbook_result.steps
+                        ]
+                    }
+                else:
+                    # Fallback for non-troubleshooting queries
+                    steps_result = {
+                        "steps": [
+                            {
+                                "description": f"Check {query_text}",
+                                "commands": ["show commands"],
+                                "citations": [],
+                            }
+                        ]
+                    }
 
                 end_time = time.time()
                 latency_ms = (end_time - start_time) * 1000
@@ -538,11 +675,13 @@ def main():
     parser = argparse.ArgumentParser(description="AE v2 Evaluation Runner")
     parser.add_argument(
         "--suite",
-        choices=["defs", "concepts", "trouble"],
+        choices=["defs", "concepts", "trouble", "negatives"],
         required=True,
         help="Evaluation suite to run",
     )
-    parser.add_argument("--dataset", default="sample", help="Dataset name (sample or m1)")
+    parser.add_argument(
+        "--dataset", default="sample", help="Dataset name (sample or m1)"
+    )
     parser.add_argument("--json", required=True, help="Output JSON file path")
     parser.add_argument("--repeats", type=int, default=1, help="Number of repeat runs")
     parser.add_argument("--strict", action="store_true", help="Enforce thresholds")
@@ -573,6 +712,8 @@ def main():
         report = runner.run_concept_evaluation(dataset_path, args.repeats)
     elif args.suite == "trouble":
         report = runner.run_troubleshooting_evaluation(dataset_path, args.repeats)
+    elif args.suite == "negatives":
+        report = runner.run_negatives_evaluation(dataset_path, args.repeats)
     else:
         logger.error(f"Unknown suite: {args.suite}")
         sys.exit(1)

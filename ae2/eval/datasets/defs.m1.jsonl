@@ -57,4 +57,4 @@
 {"id":"D57","query":"bgp mpls vpn","expected":{"intent":"DEFINE","target_rfc":4364}}
 {"id":"D58","query":"bgp mpls te","expected":{"intent":"DEFINE","target_rfc":7752}}
 {"id":"D59","query":"bgp srv6","expected":{"intent":"DEFINE","target_rfc":9256}}
-{"id":"D60","query":"bgp segment routing","expected":{"intent":"DEFINE","target_rfc":8669}} 
+{"id":"D60","query":"bgp segment routing","expected":{"intent":"DEFINE","target_rfc":8669}}

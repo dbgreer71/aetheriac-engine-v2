@@ -4,8 +4,6 @@ Tests for Concept Cards functionality.
 Tests verify concept card compilation, storage, and API endpoints.
 """
 
-
-
 import pytest
 from pathlib import Path
 from datetime import datetime, timezone
@@ -287,6 +285,7 @@ class TestConceptAPI:
         """Create a test API client."""
         # Set up test environment before importing app
         import os
+
         os.environ["AE_INDEX_DIR"] = str(Path("data/index").resolve())
         os.environ["ENABLE_DENSE"] = "0"
 
@@ -304,7 +303,9 @@ class TestConceptAPI:
 
     def test_compile_concept_api(self, api_client):
         """Test POST /concepts/compile endpoint."""
-        response = api_client.post("/concepts/compile?slug=arp", headers=api_client.auth_headers)
+        response = api_client.post(
+            "/concepts/compile?slug=arp", headers=api_client.auth_headers
+        )
 
         assert response.status_code == 200
         data = response.json()
@@ -318,7 +319,9 @@ class TestConceptAPI:
     def test_get_concept_api(self, api_client):
         """Test GET /concepts/{slug} endpoint."""
         # First compile and save a concept
-        compile_response = api_client.post("/concepts/compile?slug=arp&save=true", headers=api_client.auth_headers)
+        compile_response = api_client.post(
+            "/concepts/compile?slug=arp&save=true", headers=api_client.auth_headers
+        )
         assert compile_response.status_code == 200
 
         # Then retrieve it by slug
@@ -332,12 +335,16 @@ class TestConceptAPI:
     def test_debug_concept_api(self, api_client):
         """Test GET /debug/concept/{id} endpoint."""
         # First compile a concept
-        compile_response = api_client.post("/concepts/compile?slug=arp", headers=api_client.auth_headers)
+        compile_response = api_client.post(
+            "/concepts/compile?slug=arp", headers=api_client.auth_headers
+        )
         assert compile_response.status_code == 200
         card_id = compile_response.json()["id"]
 
         # Then get debug info
-        response = api_client.get(f"/debug/concept/{card_id}", headers=api_client.auth_headers)
+        response = api_client.get(
+            f"/debug/concept/{card_id}", headers=api_client.auth_headers
+        )
         assert response.status_code == 200
         data = response.json()
 
@@ -363,7 +370,9 @@ class TestConceptAPI:
     def test_list_concepts_api(self, api_client):
         """Test GET /concepts/list endpoint."""
         # Compile and save a concept first
-        api_client.post("/concepts/compile?slug=arp&save=true", headers=api_client.auth_headers)
+        api_client.post(
+            "/concepts/compile?slug=arp&save=true", headers=api_client.auth_headers
+        )
 
         # List concepts
         response = api_client.get("/concepts/list", headers=api_client.auth_headers)
@@ -382,12 +391,16 @@ class TestConceptAPI:
 
     def test_get_nonexistent_concept(self, api_client):
         """Test getting a nonexistent concept."""
-        response = api_client.get("/concepts/nonexistent", headers=api_client.auth_headers)
+        response = api_client.get(
+            "/concepts/nonexistent", headers=api_client.auth_headers
+        )
         assert response.status_code == 404
 
     def test_compile_invalid_slug_api(self, api_client):
         """Test compiling with invalid slug via API."""
-        response = api_client.post("/concepts/compile?slug=xyz123nonexistent", headers=api_client.auth_headers)
+        response = api_client.post(
+            "/concepts/compile?slug=xyz123nonexistent", headers=api_client.auth_headers
+        )
         assert response.status_code == 400
 
     def test_debug_index_includes_concepts(self, api_client):
@@ -414,7 +427,9 @@ class TestConceptAPI:
     def test_compile_with_save(self, api_client):
         """Test compiling with save=true parameter."""
         # Compile and save
-        response = api_client.post("/concepts/compile?slug=arp&save=true", headers=api_client.auth_headers)
+        response = api_client.post(
+            "/concepts/compile?slug=arp&save=true", headers=api_client.auth_headers
+        )
         assert response.status_code == 200
         data = response.json()
 
@@ -431,7 +446,9 @@ class TestConceptAPI:
     def test_concepts_list_endpoint(self, api_client):
         """Test GET /concepts/list endpoint."""
         # Compile and save a concept first
-        api_client.post("/concepts/compile?slug=arp&save=true", headers=api_client.auth_headers)
+        api_client.post(
+            "/concepts/compile?slug=arp&save=true", headers=api_client.auth_headers
+        )
 
         # List concepts
         response = api_client.get("/concepts/list", headers=api_client.auth_headers)
@@ -595,6 +612,7 @@ class TestConceptAPIV02:
         """Create a test API client."""
         # Set up test environment before importing app
         import os
+
         os.environ["AE_INDEX_DIR"] = str(Path("data/index").resolve())
         os.environ["ENABLE_DENSE"] = "0"
 
@@ -614,10 +632,14 @@ class TestConceptAPIV02:
         """Test POST /concepts/rebuild endpoint."""
         with api_client as client:
             # First compile and save a concept
-            client.post("/concepts/compile?slug=arp&save=true", headers=client.auth_headers)
+            client.post(
+                "/concepts/compile?slug=arp&save=true", headers=client.auth_headers
+            )
 
             # Then rebuild it
-            response = client.post("/concepts/rebuild?slug=arp", headers=client.auth_headers)
+            response = client.post(
+                "/concepts/rebuild?slug=arp", headers=client.auth_headers
+            )
             assert response.status_code == 200
             data = response.json()
 
@@ -629,7 +651,9 @@ class TestConceptAPIV02:
         """Test DELETE /concepts/{slug} endpoint."""
         with api_client as client:
             # First compile and save a concept
-            client.post("/concepts/compile?slug=arp&save=true", headers=client.auth_headers)
+            client.post(
+                "/concepts/compile?slug=arp&save=true", headers=client.auth_headers
+            )
 
             # Verify it exists
             response = client.get("/concepts/arp", headers=client.auth_headers)
@@ -661,7 +685,9 @@ class TestConceptAPIV02:
         """Test stale flag in API responses."""
         with api_client as client:
             # Compile and save a concept
-            client.post("/concepts/compile?slug=arp&save=true", headers=client.auth_headers)
+            client.post(
+                "/concepts/compile?slug=arp&save=true", headers=client.auth_headers
+            )
 
             # Check list response includes stale flag
             response = client.get("/concepts/list", headers=client.auth_headers)
@@ -680,7 +706,9 @@ class TestConceptAPIV02:
         """Test that /debug/index reflects GC."""
         with api_client as client:
             # Compile and save a concept
-            client.post("/concepts/compile?slug=arp&save=true", headers=client.auth_headers)
+            client.post(
+                "/concepts/compile?slug=arp&save=true", headers=client.auth_headers
+            )
 
             # Check initial count
             response = client.get("/debug/index", headers=client.auth_headers)
@@ -815,6 +843,7 @@ class TestConceptAPIV03:
         """Create a test API client."""
         # Set up test environment before importing app
         import os
+
         os.environ["AE_INDEX_DIR"] = str(Path("data/index").resolve())
         os.environ["ENABLE_DENSE"] = "0"
 
@@ -834,7 +863,9 @@ class TestConceptAPIV03:
         """Test enhanced evidence fields in API."""
         with api_client as client:
             # Compile and save a concept
-            response = client.post("/concepts/compile?slug=arp&save=true", headers=client.auth_headers)
+            response = client.post(
+                "/concepts/compile?slug=arp&save=true", headers=client.auth_headers
+            )
             assert response.status_code == 200
             data = response.json()
 
@@ -850,10 +881,14 @@ class TestConceptAPIV03:
         """Test diff API endpoint."""
         with api_client as client:
             # First compile and save a concept
-            client.post("/concepts/compile?slug=arp&save=true", headers=client.auth_headers)
+            client.post(
+                "/concepts/compile?slug=arp&save=true", headers=client.auth_headers
+            )
 
             # Test diff with recompile=false (should be empty)
-            response = client.get("/concepts/diff/arp?recompile=false", headers=client.auth_headers)
+            response = client.get(
+                "/concepts/diff/arp?recompile=false", headers=client.auth_headers
+            )
             assert response.status_code == 200
             data = response.json()
             assert data["changed"] == {}
@@ -880,8 +915,12 @@ class TestConceptAPIV03:
         """Test export API endpoint."""
         with api_client as client:
             # First compile and save some concepts
-            client.post("/concepts/compile?slug=arp&save=true", headers=client.auth_headers)
-            client.post("/concepts/compile?slug=ospf&save=true", headers=client.auth_headers)
+            client.post(
+                "/concepts/compile?slug=arp&save=true", headers=client.auth_headers
+            )
+            client.post(
+                "/concepts/compile?slug=ospf&save=true", headers=client.auth_headers
+            )
 
             # Export all concepts
             response = client.post("/concepts/export", headers=client.auth_headers)
@@ -1115,6 +1154,7 @@ class TestConceptAPIV04:
         """Create a test API client."""
         # Set up test environment before importing app
         import os
+
         os.environ["AE_INDEX_DIR"] = str(Path("data/index").resolve())
         os.environ["ENABLE_DENSE"] = "0"
 
@@ -1134,7 +1174,9 @@ class TestConceptAPIV04:
         """Test reference validation API."""
         with api_client as client:
             # First compile and save a concept
-            client.post("/concepts/compile?slug=arp&save=true", headers=client.auth_headers)
+            client.post(
+                "/concepts/compile?slug=arp&save=true", headers=client.auth_headers
+            )
 
             # Validate it
             response = client.get("/concepts/validate/arp", headers=client.auth_headers)
@@ -1152,7 +1194,10 @@ class TestConceptAPIV04:
         with api_client as client:
             # This test would require the compiler to emit related slugs
             # For now, we'll test the endpoint structure
-            response = client.post("/concepts/compile?slug=arp&save=true&pull=true", headers=client.auth_headers)
+            response = client.post(
+                "/concepts/compile?slug=arp&save=true&pull=true",
+                headers=client.auth_headers,
+            )
             assert response.status_code == 200
             data = response.json()
 
@@ -1166,11 +1211,17 @@ class TestConceptAPIV04:
         """Test search API."""
         with api_client as client:
             # First compile and save some concepts
-            client.post("/concepts/compile?slug=arp&save=true", headers=client.auth_headers)
-            client.post("/concepts/compile?slug=ospf&save=true", headers=client.auth_headers)
+            client.post(
+                "/concepts/compile?slug=arp&save=true", headers=client.auth_headers
+            )
+            client.post(
+                "/concepts/compile?slug=ospf&save=true", headers=client.auth_headers
+            )
 
             # Search
-            response = client.get("/concepts/search?q=arp&limit=5", headers=client.auth_headers)
+            response = client.get(
+                "/concepts/search?q=arp&limit=5", headers=client.auth_headers
+            )
             assert response.status_code == 200
             data = response.json()
 
@@ -1191,8 +1242,12 @@ class TestConceptAPIV04:
         """Test tags API."""
         with api_client as client:
             # First compile and save some concepts
-            client.post("/concepts/compile?slug=arp&save=true", headers=client.auth_headers)
-            client.post("/concepts/compile?slug=ospf&save=true", headers=client.auth_headers)
+            client.post(
+                "/concepts/compile?slug=arp&save=true", headers=client.auth_headers
+            )
+            client.post(
+                "/concepts/compile?slug=ospf&save=true", headers=client.auth_headers
+            )
 
             # Get tags
             response = client.get("/concepts/tags", headers=client.auth_headers)

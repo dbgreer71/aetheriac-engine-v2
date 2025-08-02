@@ -28,7 +28,7 @@ except ImportError:
 class RouteDecision:
     """Result of query routing decision."""
 
-    intent: str  # "DEFINE", "CONCEPT", "TROUBLESHOOT"
+    intent: str  # "DEFINE", "CONCEPT", "TROUBLESHOOT", "ABSTAIN"
     target: str  # RFC number, concept slug, or playbook slug
     confidence: float  # 0.0 to 1.0
     matches: List[str]  # Matched terms/keywords
@@ -57,6 +57,66 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
     query_lower = query.lower()
 
     def _cache_and_return(decision: RouteDecision) -> RouteDecision:
+        """Cache the decision and return it."""
+        if CACHE_AVAILABLE:
+            cache_key = f"route:{query}"
+            cache_set(cache_key, decision)
+        return decision
+
+    # Check for off-topic or ambiguous queries that should abstain
+    off_topic_terms = [
+        "weather", "cook", "pasta", "computer", "windows", "python", "database", 
+        "web development", "machine learning", "cloud computing"
+    ]
+    
+    ambiguous_terms = [
+        "router", "protocol", "connection", "security", "performance", "monitoring",
+        "configuration", "troubleshooting", "best practices", "documentation",
+        "training", "certification", "vendor", "hardware", "software"
+    ]
+    
+    # Check for empty or very short queries
+    if not query.strip() or len(query.strip()) < 3:
+        return _cache_and_return(
+            RouteDecision(
+                intent="ABSTAIN",
+                target="",
+                confidence=1.0,
+                matches=[],
+                notes="Empty or too short query",
+                mode_used="hybrid",
+            )
+        )
+    
+    # Check for off-topic queries
+    for term in off_topic_terms:
+        if term in query_lower:
+            return _cache_and_return(
+                RouteDecision(
+                    intent="ABSTAIN",
+                    target="",
+                    confidence=0.9,
+                    matches=[term],
+                    notes=f"Off-topic query containing '{term}'",
+                    mode_used="hybrid",
+                )
+            )
+    
+    # Check for ambiguous queries (only if they appear alone)
+    query_words = query_lower.split()
+    if len(query_words) == 1:
+        for term in ambiguous_terms:
+            if query_words[0] == term:
+                return _cache_and_return(
+                    RouteDecision(
+                        intent="ABSTAIN",
+                        target="",
+                        confidence=0.8,
+                        matches=[term],
+                        notes=f"Ambiguous single-word query: '{term}'",
+                        mode_used="hybrid",
+                    )
+                )
         """Cache the decision and return it."""
         if CACHE_AVAILABLE:
             cache_key = f"route:{query}"

@@ -129,6 +129,7 @@ def run_playbook(slug: str, ctx: PlayContext, store: IndexStore) -> PlayResult:
         playbook = create_ospf_neighbor_playbook()
     elif slug == "bgp-neighbor-down":
         from .bgp_neighbor_down import create_bgp_neighbor_playbook
+
         playbook = create_bgp_neighbor_playbook()
     else:
         raise ValueError(f"Unknown playbook: {slug}")
@@ -203,6 +204,7 @@ def get_playbook_explanation(slug: str, vendor: str) -> Dict[str, Any]:
         playbook = create_ospf_neighbor_playbook()
     elif slug == "bgp-neighbor-down":
         from .bgp_neighbor_down import create_bgp_neighbor_playbook
+
         playbook = create_bgp_neighbor_playbook()
     else:
         raise ValueError(f"Unknown playbook: {slug}")

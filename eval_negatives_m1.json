@@ -1,0 +1,29 @@
+{
+  "suite": "negatives",
+  "dataset": "m1",
+  "ts": "2025-08-02T17:09:16.549321",
+  "counts": {
+    "total": 25,
+    "ok": 24
+  },
+  "metrics": {
+    "abstain_accuracy": 0.96,
+    "false_positive_rate": 0.04,
+    "latency_ms": {
+      "p50": 0.002,
+      "p95": 0.008,
+      "p99": 0.011,
+      "avg": 0.003
+    }
+  },
+  "failures": [
+    {
+      "id": "N19",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    }
+  ],
+  "hashes": {
+    "dataset_sha256": "ca7ec840d50fb42c31e3b783942acb3ab5111da072c5cff1505fae7f9618146b",
+    "code_rev": "701dfcf"
+  }
+}

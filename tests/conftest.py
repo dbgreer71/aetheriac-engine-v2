@@ -5,7 +5,6 @@ This file sets up the test environment before any tests run.
 """
 
 import os
-import pytest
 
 # Set environment variables for testing
-os.environ["AE_DISABLE_AUTH"] = "true" 
+os.environ["AE_DISABLE_AUTH"] = "true"
