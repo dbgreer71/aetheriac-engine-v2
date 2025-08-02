@@ -58,3 +58,57 @@ jobs:
 
       - name: Concept Tests
         run: AE_INDEX_DIR="$(pwd)/${INDEX_DIR}" pytest -q tests/test_concepts.py
+
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: test-api
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PIP_CACHE }}
+          key: pip-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+
+      - name: Install (editable)
+        run: pip install -e .
+
+      - name: Cache RFC index
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.INDEX_DIR }}
+          key: rfcindex-${{ hashFiles('data/index/manifest.json') }}
+          restore-keys: |
+            rfcindex-
+
+      - name: Build index (if needed)
+        run: |
+          if [ ! -f "${INDEX_DIR}/sections.jsonl" ]; then
+            ./scripts/sync_rfc_min.sh
+            python scripts/build_index.py
+          fi
+
+      - name: Run evaluation suites
+        env:
+          ENABLE_DENSE: "0"
+          AE_BIND_PORT: "8001"
+          AE_INDEX_DIR: ${{ github.workspace }}/data/index
+        run: |
+          make eval-defs
+          make eval-concepts
+          make eval-trouble
+
+      - name: Upload evaluation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-reports
+          path: |
+            eval_defs.json
+            eval_concepts.json
+            eval_trouble.json

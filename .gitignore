@@ -7,3 +7,7 @@ data/rfc_raw/
 artifacts/
 *.npy
 *.pkl
+
+# Concept cards (local compiled cards)
+data/concepts/*.json
+!data/concepts/concepts_manifest.json
