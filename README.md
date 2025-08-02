@@ -930,6 +930,80 @@ make demo
 
 This ensures the system works for new users immediately and meets expert standards before any release.
 
+## Run with Docker
+
+### Quick Start with Docker
+
+```bash
+# Build and run with Docker Compose
+make docker-run
+
+# Or manually
+docker build -t aev2:local .
+docker compose up -d
+
+# Check health
+curl http://localhost:8001/healthz
+```
+
+### Docker Configuration
+
+The Docker setup includes:
+- **Base image**: `python:3.10-slim` for minimal size
+- **Non-root user**: `aev2` user for security
+- **Health checks**: Automatic health monitoring
+- **Volume mounts**: Data directory mounted for persistence
+- **Environment variables**: Configurable via docker-compose.yml
+
+### Environment Variables
+
+Key environment variables for Docker:
+- `AE_BIND_PORT`: API port (default: 8001)
+- `ENABLE_DENSE`: Enable dense embeddings (default: 0)
+- `AE_INDEX_DIR`: Index directory path
+- `AE_CACHE_ENABLED`: Enable TTL LRU cache (default: 0)
+- `AE_CACHE_TTL_S`: Cache TTL in seconds (default: 300)
+- `AE_CACHE_SIZE`: Maximum cache size (default: 1000)
+
+## Performance
+
+### HTTP Performance Testing
+
+```bash
+# Run performance test
+make perf-http
+
+# Or manually with custom parameters
+python scripts/perf_http.py --base http://localhost:8001 --total 100 --concurrency 10 --json perf_http.json
+```
+
+### Performance Metrics
+
+The performance harness measures:
+- **Latency percentiles**: P50, P90, P95, P99
+- **Throughput**: Requests per second
+- **Success rate**: Percentage of successful requests
+- **Error analysis**: Detailed error reporting
+
+### Performance Tuning
+
+**Environment Variables for Performance**:
+- `AE_WORKERS`: Number of API workers (default: 1)
+- `AE_CACHE_ENABLED`: Enable caching (default: 0)
+- `AE_CACHE_TTL_S`: Cache TTL in seconds (default: 300)
+- `AE_CACHE_SIZE`: Maximum cache size (default: 1000)
+
+**Cache Configuration**:
+```bash
+# Enable cache with 60s TTL and 512 items
+AE_CACHE_ENABLED=1 AE_CACHE_TTL_S=60 AE_CACHE_SIZE=512 python -m ae2.api.main
+```
+
+**Performance Reports**:
+- `perf_http.json`: Detailed performance metrics
+- CI artifacts: Performance reports uploaded to GitHub Actions
+- Thresholds: P95 latency ≤ 250ms (configurable)
+
 ## Development
 
 ### Project Structure
