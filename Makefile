@@ -1,4 +1,4 @@
-.PHONY: demo eval-defs eval-concepts eval-trouble perf dist
+.PHONY: demo eval-defs eval-concepts eval-trouble perf dist sbom
 
 demo:
 	AE_INDEX_DIR=$(PWD)/data/index ENABLE_DENSE=0 python -m ae2.eval.run --suite defs --dataset sample --json /tmp/defs.demo.json --repeats 1 --strict || true
@@ -37,3 +37,6 @@ ci-local:
 
 dist:
 	python -m build
+
+sbom:
+	cyclonedx-bom -o sbom.json .

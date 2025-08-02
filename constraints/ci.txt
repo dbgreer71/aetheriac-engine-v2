@@ -6,3 +6,5 @@ pytest==8.2.2
 httpx==0.27.0
 jsonschema==4.21.1
 pydantic-settings==2.4.0
+cyclonedx-bom==0.14.0
+pip-audit==2.7.0
