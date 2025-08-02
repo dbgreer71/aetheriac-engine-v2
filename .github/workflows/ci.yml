@@ -42,6 +42,13 @@ jobs:
           python scripts/build_index.py
           ls -l data/index || true
 
+      - name: Verify built index
+        if: always()
+        run: |
+          set -euo pipefail
+          ls -la data/index || true
+          test -f data/index/sections.jsonl || { echo "sections.jsonl missing – index build failed"; exit 1; }
+
       - name: Run smoke tests
         run: python -m pytest -q tests/ci_smoke_test.py -o log_cli=true -o log_cli_level=INFO -rA --maxfail=1 --disable-warnings | tee ci_pytest_smoke.log
 
@@ -51,6 +58,8 @@ jobs:
         with:
           name: rfc-index
           path: data/index
+          if-no-files-found: error
+          retention-days: 3
 
       - name: Upload smoke test log
         if: always()
@@ -155,9 +164,9 @@ jobs:
             eval_trouble.json
 
   perf:
+    needs: test-api
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: eval
     steps:
       - uses: actions/checkout@v4
 
@@ -182,37 +191,35 @@ jobs:
           name: rfc-index
           path: data/index
 
-      - name: Verify index
+      - name: Verify downloaded index
         run: |
           set -euo pipefail
-          test -f data/index/sections.jsonl || { echo "index artifact missing sections.jsonl"; ls -la data/index || true; exit 1; }
-          echo "Using downloaded index artifact."
+          echo "Downloaded index tree:"
+          ls -la data/index
+          test -f data/index/sections.jsonl || { echo "sections.jsonl not found in downloaded artifact"; exit 1; }
 
-      - name: Build Docker container
+      - name: Build Docker image
         run: docker build -t aev2:test .
 
-      - name: Run container (background)
+      - name: Run container (background) with mounted index
         run: |
-          docker run -d --rm --name aev2 \
+          docker run -d --name aev2 -p 8001:8001 \
+            -e AE_BIND_HOST=0.0.0.0 \
             -e AE_BIND_PORT=8001 \
             -e AE_INDEX_DIR=/app/data/index \
-            -e ENABLE_DENSE=0 \
-            -p 8001:8001 \
             -v "${{ github.workspace }}/data/index:/app/data/index:ro" \
             aev2:test
 
       - name: Wait for readiness
         run: |
           set -euo pipefail
-          for i in {1..40}; do
-            if curl -sf http://127.0.0.1:8001/readyz >/dev/null; then
-              echo "[perf] service is ready"
-              exit 0
+          for i in $(seq 1 40); do
+            if curl -sf http://localhost:8001/readyz >/dev/null; then
+              echo "ready"; exit 0
             fi
             sleep 0.5
           done
-          echo "[perf] readiness timed out"
-          docker logs aev2 || true
+          echo "Container not ready, logs:"; docker logs aev2 || true
           exit 1
 
       - name: HTTP perf
