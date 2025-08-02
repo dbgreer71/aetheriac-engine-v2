@@ -31,7 +31,8 @@ def test_readyz_endpoint():
         response = client.get("/readyz")
         assert response.status_code == 200
         data = response.json()
-        assert data["sections"] > 0
+        assert data["ok"] is True
+        assert data["total_sections"] > 0
 
 
 def test_query_endpoint():
@@ -47,5 +48,5 @@ def test_debug_index_endpoint():
         response = client.get("/debug/index")
         assert response.status_code == 200
         data = response.json()
-        assert "sections" in data
-        assert "rfc_numbers" in data
+        assert "index_dir" in data
+        assert "hash_match" in data

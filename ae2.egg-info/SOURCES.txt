@@ -79,6 +79,9 @@ ae2/eval/__init__.py
 ae2/eval/metrics.py
 ae2/eval/run.py
 ae2/lab/__init__.py
+ae2/obs/logging.py
+ae2/obs/metrics.py
+ae2/obs/middleware.py
 ae2/playbooks/__init__.py
 ae2/playbooks/engine.py
 ae2/playbooks/models.py
