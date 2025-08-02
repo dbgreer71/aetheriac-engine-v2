@@ -36,6 +36,20 @@ def assemble(
     timeout_ms = int(os.getenv("ASSEMBLER_TIMEOUT_MS", "150"))
     _ = timeout_ms / 1000.0  # timeout_seconds not used in current implementation
 
+    # Record metrics if enabled
+    metrics_enabled = os.getenv("AE_ENABLE_METRICS", "1").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    if metrics_enabled:
+        try:
+            from ae2.obs.metrics import record_query_latency
+        except ImportError:
+            record_query_latency = None
+    else:
+        record_query_latency = None
+
     try:
         if decision.intent == "DEFINE":
             result = assemble_definition(
@@ -156,8 +170,12 @@ def assemble(
         }
 
     finally:
-        # Check timeout
+        # Record metrics
         elapsed = (time.time() - start_time) * 1000
+        if record_query_latency:
+            record_query_latency(decision.intent, decision.mode_used, elapsed)
+
+        # Check timeout
         if elapsed > timeout_ms:
             return {
                 "error": f"Assembly timeout after {elapsed:.1f}ms (limit: {timeout_ms}ms)",
