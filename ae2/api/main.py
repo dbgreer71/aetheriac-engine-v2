@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 import hashlib
 import json
 import os
+import time
 from typing import List, Optional, Dict
 from ae2.retriever.index_store import IndexStore
 from ae2.concepts.compiler import compile_concept
@@ -100,14 +101,42 @@ class QueryReq(BaseModel):
 
 @app.get("/healthz")
 def healthz():
-    manifest = getattr(app.state, "manifest", None)
-    stats = store.stats() if store else {}
+    """Lightweight health check - always returns OK if service is running."""
     return {
         "ok": True,
-        "index_dir": str(AE_INDEX_DIR),
-        "total_sections": stats.get("total_sections"),
-        "rfc_numbers": stats.get("rfc_numbers"),
+        "service": "ae2",
+        "timestamp": time.time(),
+    }
+
+
+@app.get("/readyz")
+def readyz():
+    """Readiness check - returns OK only if all dependencies are ready."""
+    manifest = getattr(app.state, "manifest", None)
+    stats = store.stats() if store else {}
+
+    # Check if index is loaded and has sections
+    index_ready = store is not None and stats.get("total_sections", 0) > 0
+
+    # Check if concept store is ready (if enabled)
+    concept_ready = True
+    if concept_store is not None:
+        try:
+            concept_store.gc_manifest()
+            concept_ready = True
+        except Exception:
+            concept_ready = False
+
+    # Overall readiness
+    ready = index_ready and concept_ready
+
+    return {
+        "ok": ready,
+        "index_ready": index_ready,
+        "concept_ready": concept_ready,
+        "total_sections": stats.get("total_sections", 0),
         "manifest_present": bool(manifest),
+        "timestamp": time.time(),
     }
 
 
