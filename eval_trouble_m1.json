@@ -1,20 +1,20 @@
 {
   "suite": "trouble",
   "dataset": "trouble.m1",
-  "ts": "2025-08-02T21:13:17.055709Z",
+  "ts": "2025-08-02T21:14:41.151114Z",
   "counts": {
     "total": 20,
     "ok": 13
   },
   "metrics": {
     "latency_ms": {
-      "p50": 0.044,
-      "p95": 4.887,
-      "p99": 4.887,
-      "avg": 0.288
+      "p50": 0.052,
+      "p95": 6.224,
+      "p99": 6.224,
+      "avg": 0.36
     },
     "pass_min_steps": 1.0,
-    "deterministic": 1.0
+    "deterministic": 0.0
   },
   "failures": [
     {
@@ -48,6 +48,6 @@
   ],
   "hashes": {
     "dataset_sha256": "b5d4eb9ec260cbceec0487d0b1d7b5f645ec9d2e275670166fc41b8fccac9ffe",
-    "code_rev": "701dfcf"
+    "code_rev": "78b6808"
   }
 }

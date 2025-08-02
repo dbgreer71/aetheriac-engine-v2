@@ -1,7 +1,7 @@
 {
   "suite": "defs",
   "dataset": "defs.m1",
-  "ts": "2025-08-02T21:09:24.800500Z",
+  "ts": "2025-08-02T21:14:32.152593Z",
   "counts": {
     "total": 60,
     "ok": 60
@@ -12,16 +12,16 @@
     "p_at_3": 0.33299999999999985,
     "ndcg_at_3": 1.0,
     "latency_ms": {
-      "p50": 0.005,
-      "p95": 0.008,
-      "p99": 0.014,
-      "avg": 0.006
+      "p50": 0.006,
+      "p95": 0.01,
+      "p99": 0.036,
+      "avg": 0.007
     },
     "citation_validity": 1.0
   },
   "failures": [],
   "hashes": {
     "dataset_sha256": "74d6753a874e489721f4b0667f414fd193fda66df010f4b884dccd98386df784",
-    "code_rev": "701dfcf"
+    "code_rev": "78b6808"
   }
 }
