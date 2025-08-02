@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 import json, pickle, numpy as np
 from scipy import sparse
 from sklearn.metrics.pairwise import cosine_similarity
@@ -27,10 +27,35 @@ class IndexStore:
         qv = self.vectorizer.transform([query])
         scores = cosine_similarity(qv, self.matrix).ravel()
         order = np.argsort(-scores)
-        out = []
-        for i in order:
+
+        def _definitional_boost(sec: Dict, q: str) -> float:
+            ql = q.lower()
+            if any(k in ql for k in ("what is", "overview", "definition", "intro")):
+                boost = 0.0
+                title = (sec.get("title") or "").lower()
+                section = sec.get("section", "")
+                if title.startswith("introduction") or "overview" in title:
+                    boost += 0.05
+                if section == "1" or section.startswith("1."):
+                    boost += 0.03
+                return boost
+            return 0.0
+
+        candidates: List[Tuple[Dict, float]] = []
+        for i in order[:200]:  # light rerank window
             s = self.sections[int(i)]
             if rfc_filter and s["rfc_number"] not in rfc_filter: continue
-            out.append((s, float(scores[int(i)])))
-            if len(out) >= top_k: break
+            base = float(scores[int(i)])
+            adj = base + _definitional_boost(s, query)
+            candidates.append((s, adj))
+
+        candidates.sort(key=lambda x: x[1], reverse=True)
+        out = []
+        for s, sc in candidates[:top_k]:
+            out.append({
+                "rfc": s["rfc_number"],
+                "section": s["section"],
+                "title": s["title"],
+                "score": float(sc),
+            })
         return out

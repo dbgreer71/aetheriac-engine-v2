@@ -5,7 +5,31 @@ import re, json, pickle, hashlib, datetime as dt
 from sklearn.feature_extraction.text import TfidfVectorizer
 from scipy import sparse
 
-HEADER = re.compile(r"^(?P<num>\d+(?:\.\d+)*)\s+(?P<title>.+)$")
+# Section headers must start at 1.. (not 0..). Match "1.", "1.2.", etc.
+HEADER = re.compile(r"^(?P<num>(?:[1-9]\d*(?:\.\d+)*))\.\s+(?P<title>.+)$")
+
+# --- Cleaning helpers --------------------------------------------------------
+# dotted leaders with trailing page numbers e.g. "Equal-cost multipath .... 178"
+TOC_DOTS = re.compile(r"\.{3,}\s*\d+\s*$")
+# numeric "ruler" garbage lines like: "1 2 3 4 5 6 7 8 9 0 1 ..."
+RULER_NUMS = re.compile(r"^(?:\d+\s+){8,}\d+$")
+# ascii figure/ruler lines (boxes, separators)
+ASCII_RULE = re.compile(r"^\s*[-=_+|]{3,}\s*$")
+PLUS_MINUS_RUN = re.compile(r"^\s*(?:\+-){4,}.*$")
+FIGURE_CAPTION = re.compile(r"^\s*Figure\s+\d+:\s*", re.IGNORECASE)
+
+def clean_title(s: str) -> str:
+    s = s.strip().strip('"').replace("\t", " ")
+    s = TOC_DOTS.sub("", s).strip()
+    s = re.sub(r"\s{2,}", " ", s)
+    return s
+
+def _hash_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 def _sha256_bytes(b: bytes) -> str:
     import hashlib
@@ -31,8 +55,28 @@ def _parse_rfc_sections(text: str, rfc_number: int) -> List[Dict]:
         start, end = idx[i], idx[i+1]
         m = HEADER.match(lines[start].strip())
         if not m: continue
-        sec = m.group("num"); title = m.group("title").strip()
-        body = "\n".join(lines[start+1:end]).strip()
+        sec = m.group("num")
+        raw_title = m.group("title").strip()
+        # Skip garbage headings like numeric "rulers"
+        if RULER_NUMS.match(raw_title):
+            continue
+        title = clean_title(raw_title)
+        
+        raw_body = "\n".join(lines[start+1:end])
+        # Drop ascii rulers/figures and collapse whitespace
+        cleaned_lines = []
+        for ln in raw_body.splitlines():
+            if ASCII_RULE.match(ln) or PLUS_MINUS_RUN.match(ln):
+                continue
+            if RULER_NUMS.match(ln.strip()):
+                continue
+            if FIGURE_CAPTION.match(ln):
+                continue
+            cleaned_lines.append(ln)
+        body = "\n".join(cleaned_lines).strip()
+        
+        if not title or not body:
+            continue
         sections.append({
             "id": f"RFC{rfc_number}-{sec}",
             "rfc_number": rfc_number,
@@ -69,12 +113,15 @@ def build_index(output_dir: Path, raw_dir: Path = Path("data/rfc_raw")) -> dict:
     import pickle; pickle.dump(vec, open(output_dir/"tfidf.pkl","wb"))
     sparse.save_npz(output_dir/"tfidf_matrix.npz", X)
 
+    # Write/refresh manifest with root hash of sections.jsonl
+    sec_path = output_dir / "sections.jsonl"
     manifest = {
         "built_at": dt.datetime.utcnow().isoformat()+"Z",
         "count_sections": len(sections),
         "rfc_numbers": sorted({s["rfc_number"] for s in sections}),
         "sections_path": str(sp),
-        "artifacts": ["sections.jsonl","tfidf.pkl","tfidf_matrix.npz"]
+        "artifacts": ["sections.jsonl","tfidf.pkl","tfidf_matrix.npz"],
+        "root_hash": _hash_file(sec_path),
     }
     (output_dir/"manifest.json").write_text(json.dumps(manifest, indent=2))
     return manifest
