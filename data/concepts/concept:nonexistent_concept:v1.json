@@ -1,0 +1,34 @@
+{
+  "id": "concept:nonexistent_concept:v1",
+  "definition": {
+    "text": "The Border Gateway Protocol (BGP) is an inter-Autonomous System\n   routing protocol.\n   The primary function of a BGP speaking system is to exchange network\n   reachability information with other BGP systems.  This network\n   reachability information includes information on the list of\n   Autonomous Systems (ASes) that reachability information traverses.\n   This information is sufficient for constructing a graph of AS\n   connectivity for this reachability, from which routing loops may be\n   pruned and, at the AS level, some policy decisions may be enforced.\n   BGP-4 provides a set of mechanisms for supporting Classless Inter-\n   Domain Routing (CIDR) [RFC1518, RFC1519].  These mechanisms include\n   support for advertising a set of destinations as an IP prefix and\n   eliminating the concept of network \"class\" within BGP.  BGP-4 also\n   introduces mechanisms that allow aggregation of routes, including\n   aggregation of AS paths.\n   Routing information exchanged via BGP supports only the ",
+    "rfc_number": 4271,
+    "section": "1",
+    "url": "https://www.rfc-editor.org/rfc/rfc4271.txt"
+  },
+  "claims": [
+    {
+      "text": "A theoretical problem exists where data could be corrupted due to\n   confusion between old segments in the network and new ones after a\n   host reboots if the same port numbers and sequence space are ...",
+      "evidence": [
+        {
+          "type": "rfc",
+          "url_or_path": "https://www.rfc-editor.org/rfc/rfc9293.txt",
+          "sha256": "be2892e63792dedc5a32584a81ba8b2d54fbda6173fb84fd4c68a44f0c7b938a"
+        }
+      ]
+    },
+    {
+      "text": "OSPF is a link state routing protocol.  Such protocols are also\n        referred to in the literature as SPF-based or distributed-\n        database protocols.  This section gives a brief description o...",
+      "evidence": [
+        {
+          "type": "rfc",
+          "url_or_path": "https://www.rfc-editor.org/rfc/rfc2328.txt",
+          "sha256": "ae3377eb6830cd3bb220479320514612a0188cddb694c4f7a6a5170c0bfc8e03"
+        }
+      ]
+    }
+  ],
+  "provenance": {
+    "built_at": "2025-08-02 03:50:06.202855"
+  }
+}

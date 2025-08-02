@@ -1,0 +1,44 @@
+{
+  "id": "concept:arp:v1",
+  "definition": {
+    "text": "This document is an updated version of RFC 1716, the historical\n   Router Requirements document.  That RFC preserved the significant\n   work that went into the working group, but failed to adequately\n   describe current technology for the IESG to consider it a current\n   standard.\n   The current editor had been asked to bring the document up to date,\n   so that it is useful as a procurement specification and a guide to\n   implementors.  In this, he stands squarely on the shoulders of those\n   who have gone before him, and depends largely on expert contributors\n   for text.  Any credit is theirs; the errors are his.\n   The content and form of this document are due, in large part, to the\n   working group's chair, and document's original editor and author:\n   Philip Almquist.  It is also largely due to the efforts of its\n   previous editor, Frank Kastenholz.  Without their efforts, this\n   document would not exist.\nTable of Contents",
+    "rfc_number": 1812,
+    "section": "1",
+    "url": "https://www.rfc-editor.org/rfc/rfc1812.txt"
+  },
+  "claims": [
+    {
+      "text": "3.1 INTRODUCTION .......................................   32\n   3.2 LINK/INTERNET LAYER INTERFACE ......................   33\n   3.3 SPECIFIC ISSUES ....................................   34\n   3.3.1...",
+      "evidence": [
+        {
+          "type": "rfc",
+          "url_or_path": "https://www.rfc-editor.org/rfc/rfc1812.txt",
+          "sha256": "19b8902bd294fa2d373f102d4187abac02b9bced72a3565bfa780c49ba7bd911"
+        }
+      ]
+    },
+    {
+      "text": "3.1 INTRODUCTION .......................................   32\n   3.2 LINK/INTERNET LAYER INTERFACE ......................   33\n   3.3 SPECIFIC ISSUES ....................................   34\n   3.3.1...",
+      "evidence": [
+        {
+          "type": "rfc",
+          "url_or_path": "https://www.rfc-editor.org/rfc/rfc1812.txt",
+          "sha256": "19b8902bd294fa2d373f102d4187abac02b9bced72a3565bfa780c49ba7bd911"
+        }
+      ]
+    },
+    {
+      "text": "The Hello Protocol is responsible for establishing and\n        maintaining neighbor relationships.  It also ensures that\n        communication between neighbors is bidirectional.  Hello packets\n      ...",
+      "evidence": [
+        {
+          "type": "rfc",
+          "url_or_path": "https://www.rfc-editor.org/rfc/rfc2328.txt",
+          "sha256": "cd1bc8c73226410fc1b91507eae90c603eb8063e449fb1b04cbcabf22c70b3e0"
+        }
+      ]
+    }
+  ],
+  "provenance": {
+    "built_at": "2025-08-02 03:55:43.067376"
+  }
+}
