@@ -1001,8 +1001,66 @@ AE_CACHE_ENABLED=1 AE_CACHE_TTL_S=60 AE_CACHE_SIZE=512 python -m ae2.api.main
 
 **Performance Reports**:
 - `perf_http.json`: Detailed performance metrics
+- `perf_metrics.prom`: Raw Prometheus metrics snapshot
+- `perf_summary.json`: Combined performance and metrics summary
 - CI artifacts: Performance reports uploaded to GitHub Actions
 - Thresholds: P95 latency ≤ 250ms (configurable)
+
+## Observability
+
+### Structured Logging
+
+AE v2 uses structured JSON logging for production observability:
+
+```json
+{
+  "timestamp": 1640995200.123,
+  "level": "INFO",
+  "message": "Request completed",
+  "req_id": "550e8400-e29b-41d4-a716-446655440000",
+  "method": "POST",
+  "path": "/query",
+  "status": 200,
+  "lat_ms": 45.2,
+  "intent": "DEFINE",
+  "target": "2328",
+  "cache_hit": false,
+  "mode": "auto"
+}
+```
+
+### Request Correlation
+
+All requests are correlated using `X-Request-ID` headers:
+- **Incoming**: Uses existing `X-Request-ID` header or generates new UUID
+- **Outgoing**: Adds `X-Request-ID` to response headers
+- **Logs**: All log entries include `req_id` field for correlation
+
+### Metrics & Monitoring
+
+**Prometheus Endpoint**: `/metrics`
+- HTTP request latency histograms
+- Router intent and target counters
+- Query processing latency
+- Cache hit/miss rates
+- Concept compilation metrics
+- Playbook execution metrics
+
+**Health Checks**:
+- `/healthz`: Lightweight health check (always OK if service running)
+- `/readyz`: Readiness check (OK only if dependencies ready)
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `AE_JSON_LOGS` | `1` | Enable structured JSON logging |
+| `AE_LOG_SAMPLE` | `1.0` | Log sampling rate (0.0-1.0) |
+| `AE_ENABLE_METRICS` | `1` | Enable Prometheus metrics |
+| `AE_SERVICE_NAME` | `aev2` | Service name for metrics |
+| `AE_CACHE_ENABLED` | `0` | Enable TTL LRU cache |
+| `AE_CACHE_TTL_S` | `300` | Cache TTL in seconds |
+| `AE_CACHE_SIZE` | `1000` | Maximum cache size |
 
 ## Development
 
