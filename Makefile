@@ -24,7 +24,7 @@ docker-run:
 	curl -sf http://localhost:8001/healthz | jq .
 
 perf-http:
-	python scripts/perf_http.py --base http://localhost:8001 --total 30 --concurrency 4 --json perf_http.json
+	python scripts/perf_http.py --base http://localhost:8001 --total 30 --concurrency 4 --json perf_http.json --metrics
 
 perf:
 	AE_INDEX_DIR=$(PWD)/data/index ENABLE_DENSE=0 python -m ae2.eval.run --suite defs --dataset sample --json /tmp/perf_defs.json --repeats 10

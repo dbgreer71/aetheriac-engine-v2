@@ -153,6 +153,9 @@ def main():
         "--concurrency", type=int, default=10, help="Concurrent requests"
     )
     parser.add_argument("--json", default="perf_http.json", help="Output JSON file")
+    parser.add_argument(
+        "--metrics", action="store_true", help="Fetch metrics after test"
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
 
     args = parser.parse_args()
@@ -208,6 +211,56 @@ def main():
         print(f"\nErrors ({len(result['errors'])}):")
         for error in result["errors"][:5]:  # Show first 5 errors
             print(f"  - {error}")
+
+    # Fetch metrics if requested
+    metrics_data = None
+    if args.metrics:
+        try:
+            import aiohttp
+
+            async def fetch_metrics():
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(f"{args.base}/metrics") as response:
+                        if response.status == 200:
+                            return await response.text()
+                        return None
+
+            metrics_data = asyncio.run(fetch_metrics())
+            if metrics_data:
+                # Save raw metrics
+                with open("perf_metrics.prom", "w") as f:
+                    f.write(metrics_data)
+                print("Metrics saved to: perf_metrics.prom")
+
+                # Extract key metrics for summary
+                metrics_summary = {}
+                for line in metrics_data.split("\n"):
+                    if line.startswith("ae_http_request_latency_ms_sum"):
+                        metrics_summary["latency_sum"] = line.split(" ")[1]
+                    elif line.startswith("ae_http_request_latency_ms_count"):
+                        metrics_summary["latency_count"] = line.split(" ")[1]
+                    elif line.startswith("ae_router_intent_total"):
+                        metrics_summary["router_intents"] = line.split(" ")[1]
+                    elif line.startswith("ae_cache_hits_total"):
+                        metrics_summary["cache_hits"] = line.split(" ")[1]
+                    elif line.startswith("ae_cache_misses_total"):
+                        metrics_summary["cache_misses"] = line.split(" ")[1]
+
+                # Save metrics summary
+                with open("perf_summary.json", "w") as f:
+                    json.dump(
+                        {
+                            "timestamp": time.time(),
+                            "test_args": vars(args),
+                            "performance": result,
+                            "metrics": metrics_summary,
+                        },
+                        f,
+                        indent=2,
+                    )
+                print("Summary saved to: perf_summary.json")
+        except Exception as e:
+            print(f"Warning: Failed to fetch metrics: {e}")
 
     # Save results
     result["metadata"] = {
