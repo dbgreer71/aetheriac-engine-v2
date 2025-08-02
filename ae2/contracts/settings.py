@@ -84,6 +84,12 @@ class Settings(BaseSettings):
     cache_ttl_seconds: int = Field(default=300, description="Cache TTL in seconds")
     cache_size: int = Field(default=1000, description="Maximum cache size")
 
+    # Observability settings
+    json_logs: bool = Field(default=True, description="Enable JSON structured logging")
+    log_sample: float = Field(default=1.0, description="Log sampling rate (0.0-1.0)")
+    enable_metrics: bool = Field(default=True, description="Enable Prometheus metrics")
+    service_name: str = Field(default="aev2", description="Service name for metrics")
+
     @validator(
         "base_dir", "data_dir", "index_dir", "rfc_dir", "concepts_dir", "playbooks_dir"
     )
