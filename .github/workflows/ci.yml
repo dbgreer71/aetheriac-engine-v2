@@ -187,8 +187,24 @@ jobs:
           fi
           echo "Performance test passed: P95 latency ${p95_latency}ms <= 250ms"
 
+      - name: Check metrics presence
+        run: |
+          if [ -f "perf_metrics.prom" ]; then
+            echo "Checking core metrics presence..."
+            grep -q "ae_http_request_latency_ms" perf_metrics.prom || (echo "ERROR: ae_http_request_latency_ms not found" && exit 1)
+            grep -q "ae_router_intent_total" perf_metrics.prom || (echo "ERROR: ae_router_intent_total not found" && exit 1)
+            grep -q "ae_query_latency_ms" perf_metrics.prom || (echo "ERROR: ae_query_latency_ms not found" && exit 1)
+            grep -q "ae_cache_hits_total" perf_metrics.prom || (echo "ERROR: ae_cache_hits_total not found" && exit 1)
+            echo "All core metrics present"
+          else
+            echo "WARNING: perf_metrics.prom not found, skipping metrics check"
+          fi
+
       - name: Upload performance artifacts
         uses: actions/upload-artifact@v4
         with:
           name: performance-reports
-          path: perf_http.json
+          path: |
+            perf_http.json
+            perf_metrics.prom
+            perf_summary.json
