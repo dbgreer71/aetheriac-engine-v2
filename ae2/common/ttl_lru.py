@@ -39,6 +39,8 @@ class TTLRUCache:
         """
         with self.lock:
             if key not in self.cache:
+                # Record cache miss
+                self._record_cache_miss(key)
                 return None
 
             value, timestamp = self.cache[key]
@@ -47,10 +49,14 @@ class TTLRUCache:
             # Check if item has expired
             if current_time - timestamp > self.ttl_seconds:
                 del self.cache[key]
+                # Record cache miss (expired)
+                self._record_cache_miss(key)
                 return None
 
             # Move to end (most recently used)
             self.cache.move_to_end(key)
+            # Record cache hit
+            self._record_cache_hit(key)
             return value
 
     def set(self, key: str, value: Any) -> None:
@@ -74,6 +80,36 @@ class TTLRUCache:
             # Evict oldest if cache is full
             if len(self.cache) > self.maxsize:
                 self.cache.popitem(last=False)
+
+    def _record_cache_hit(self, key: str) -> None:
+        """Record cache hit metric."""
+        try:
+            from ae2.obs.metrics import record_cache_hit
+
+            # Determine scope from key prefix
+            scope = "unknown"
+            if key.startswith("search:"):
+                scope = "retriever"
+            elif key.startswith("route:"):
+                scope = "router"
+            record_cache_hit(scope)
+        except ImportError:
+            pass
+
+    def _record_cache_miss(self, key: str) -> None:
+        """Record cache miss metric."""
+        try:
+            from ae2.obs.metrics import record_cache_miss
+
+            # Determine scope from key prefix
+            scope = "unknown"
+            if key.startswith("search:"):
+                scope = "retriever"
+            elif key.startswith("route:"):
+                scope = "router"
+            record_cache_miss(scope)
+        except ImportError:
+            pass
 
     def delete(self, key: str) -> bool:
         """

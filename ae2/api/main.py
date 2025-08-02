@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Request
 from pydantic import BaseModel
 from pathlib import Path
 from contextlib import asynccontextmanager
@@ -111,6 +111,15 @@ def healthz():
     }
 
 
+@app.get("/metrics")
+def metrics():
+    """Prometheus metrics endpoint."""
+    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+    from fastapi.responses import Response
+
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
 @app.get("/debug/explain")
 def explain(query: str = Query(...), mode: str = Query("hybrid")):
     targets = get_target_rfcs(query)
@@ -159,6 +168,7 @@ def query(
     auth: str = Query(None),
     mtu: int = Query(None),
     pull: bool = Query(False),
+    request: Request = None,
 ):
     # Handle auto mode with unified router
     if mode == "auto":
@@ -185,6 +195,40 @@ def query(
 
         # Route the query
         decision = route(req.query, stores)
+
+        # Record metrics if enabled
+        metrics_enabled = os.getenv("AE_ENABLE_METRICS", "1").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        if metrics_enabled and request:
+            try:
+                from ae2.obs.metrics import record_router_intent, record_router_target
+
+                # Record router metrics
+                record_router_intent(decision.intent)
+
+                # Determine target kind and name
+                target_kind = "unknown"
+                target_name = decision.target
+
+                if decision.intent == "DEFINE":
+                    target_kind = "rfc"
+                elif decision.intent == "CONCEPT":
+                    target_kind = "concept"
+                elif decision.intent == "TROUBLESHOOT":
+                    target_kind = "playbook"
+
+                record_router_target(target_kind, target_name)
+
+                # Store in request state for middleware
+                request.state.intent = decision.intent
+                request.state.target = target_name
+                request.state.mode = mode
+
+            except ImportError:
+                pass
 
         # Assemble the response
         result = assemble(decision, req.query, params, stores)
