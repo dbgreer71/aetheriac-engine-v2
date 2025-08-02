@@ -57,16 +57,10 @@ async def lifespan(app: FastAPI):
     if json_logs_enabled:
         try:
             from ae2.obs.logging import setup_json_logging
-            from ae2.obs.middleware import ObservabilityMiddleware
 
             log_sample_rate = float(os.getenv("AE_LOG_SAMPLE", "1.0"))
             setup_json_logging(sample_rate=log_sample_rate)
-
-            # Register middleware
-            app.add_middleware(ObservabilityMiddleware, sample_rate=log_sample_rate)
-            logger.info(
-                "Observability middleware registered: sample_rate=%.2f", log_sample_rate
-            )
+            logger.info("JSON logging configured: sample_rate=%.2f", log_sample_rate)
         except ImportError:
             logger.warning(
                 "Observability modules not available, continuing without structured logging"
@@ -92,6 +86,18 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="AE v2", lifespan=lifespan)
+
+# Register observability middleware if enabled
+json_logs_enabled = os.getenv("AE_JSON_LOGS", "1").lower() in ("1", "true", "yes")
+if json_logs_enabled:
+    try:
+        from ae2.obs.middleware import ObservabilityMiddleware
+
+        log_sample_rate = float(os.getenv("AE_LOG_SAMPLE", "1.0"))
+        app.add_middleware(ObservabilityMiddleware, sample_rate=log_sample_rate)
+        print(f"Observability middleware registered: sample_rate={log_sample_rate:.2f}")
+    except ImportError:
+        print("Observability middleware not available, continuing without it")
 
 
 class QueryReq(BaseModel):
