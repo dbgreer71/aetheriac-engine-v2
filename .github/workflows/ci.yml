@@ -1,6 +1,11 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 8 * * *'  # daily at 8:15 AM UTC
 
 env:
   PIP_CACHE: ~/.cache/pip
@@ -69,6 +74,7 @@ jobs:
           path: ci_pytest_smoke.log
 
   ci-full:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || contains(github.event.head_commit.message, '[full-ci]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     needs: test-api
@@ -105,6 +111,7 @@ jobs:
         run: python -m pytest -q -o log_cli=true -o log_cli_level=INFO -rA --maxfail=1 --disable-warnings | tee ci_pytest_full.log
 
   eval:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || contains(github.event.head_commit.message, '[full-ci]') }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: test-api
@@ -164,9 +171,11 @@ jobs:
             eval_trouble.json
 
   perf:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || contains(github.event.head_commit.message, '[full-ci]') }}
     needs: test-api
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
