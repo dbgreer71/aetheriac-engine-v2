@@ -55,10 +55,10 @@ def healthz():
             "manifest_present": bool(manifest)}
 
 @app.get("/debug/explain")
-def explain(query: str = Query(...)):
+def explain(query: str = Query(...), mode: str = Query("hybrid")):
     targets = get_target_rfcs(query)
-    hits = store.search(query, top_k=5, rfc_filter=targets or None)
-    return {"router_decision": {"target_rfcs": targets},
+    hits = store.search(query, top_k=5, rfc_filter=targets or None, mode=mode)
+    return {"router_decision": {"target_rfcs": targets, "mode": mode},
             "top_hits": hits}
 
 @app.get("/debug/index")
@@ -75,14 +75,16 @@ def debug_index():
     }
 
 @app.post("/query")
-def query(req: QueryReq):
+def query(req: QueryReq, mode: str = Query("hybrid")):
     targets = get_target_rfcs(req.query)
-    hits = store.search(req.query, top_k=req.top_k, rfc_filter=targets or None)
-    if not hits: return {"answer":"No relevant sections found.","citations":[]}
+    hits = store.search(req.query, top_k=req.top_k, rfc_filter=targets or None, mode=mode)
+    if not hits: return {"answer":"No relevant sections found.","citations":[], "mode": mode}
     s = hits[0]
     return {"answer": s.get("excerpt", s.get("title", ""))[:1200],
             "citations":[{"citation_text": f"RFC {s['rfc']} §{s['section']} — {s['title']}",
-                          "url": f"https://www.rfc-editor.org/rfc/rfc{s['rfc']}.txt"}]}
+                          "url": f"https://www.rfc-editor.org/rfc/rfc{s['rfc']}.txt"}],
+            "mode": mode,
+            "debug": {"score": s.get("score"), "scores": s.get("scores", {})}}
 
 if __name__ == "__main__":
     import uvicorn

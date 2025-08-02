@@ -10,7 +10,8 @@ dependencies = [
   "scikit-learn",
   "scipy",
   "requests",
-  "tqdm"
+  "tqdm",
+  "rank-bm25>=0.2.2"
 ]
 [project.optional-dependencies]
 test = ["pytest","httpx"]
