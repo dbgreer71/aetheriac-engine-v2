@@ -154,6 +154,7 @@ def assemble(
                 "steps": result.get("steps", []),
                 "citations": result.get("citations", []),
                 "confidence": result.get("confidence", 0.0),
+                "step_hash": result.get("step_hash", ""),
                 "processing_time_ms": (time.time() - start_time) * 1000,
             }
 
