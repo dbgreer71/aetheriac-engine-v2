@@ -45,6 +45,13 @@ jobs:
       - name: Run smoke tests
         run: python -m pytest -q tests/ci_smoke_test.py -o log_cli=true -o log_cli_level=INFO -rA --maxfail=1 --disable-warnings | tee ci_pytest_smoke.log
 
+      - name: Upload RFC index artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rfc-index
+          path: data/index
+
       - name: Upload smoke test log
         if: always()
         uses: actions/upload-artifact@v4
@@ -169,18 +176,17 @@ jobs:
           python -m pip install -U pip
           python -m pip install -c constraints/ci.txt -e .
 
-      - name: Cache RFC index
-        uses: actions/cache@v4
+      - name: Download RFC index artifact
+        uses: actions/download-artifact@v4
         with:
+          name: rfc-index
           path: data/index
-          key: rfc-index-${{ hashFiles('data/index/sections.jsonl') }}
-          restore-keys: |
-            rfc-index-
 
-      - name: Build index (if needed)
+      - name: Verify index
         run: |
-          mkdir -p data/index
-          python scripts/build_index.py
+          set -euo pipefail
+          test -f data/index/sections.jsonl || { echo "index artifact missing sections.jsonl"; ls -la data/index || true; exit 1; }
+          echo "Using downloaded index artifact."
 
       - name: Build Docker container
         run: docker build -t aev2:test .
@@ -192,7 +198,7 @@ jobs:
             -e AE_INDEX_DIR=/app/data/index \
             -e ENABLE_DENSE=0 \
             -p 8001:8001 \
-            -v "$PWD/data/index":/app/data/index \
+            -v "${{ github.workspace }}/data/index:/app/data/index:ro" \
             aev2:test
 
       - name: Wait for readiness
