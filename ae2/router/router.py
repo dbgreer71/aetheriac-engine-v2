@@ -125,6 +125,43 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
 
     # Check for troubleshooting intent first (highest priority)
     is_troubleshoot, troubleshoot_matches, vendor = extract_troubleshoot_terms(query)
+    
+    # Special handling for BGP neighbor-down queries - prefer TROUBLESHOOT
+    if "bgp" in query_lower and any(term in query_lower for term in ["neighbor", "peer", "session", "down", "idle", "active", "connect", "opensent", "openconfirm", "established", "flap", "dampening", "multihop", "authentication", "md5", "keychain", "timers", "keepalive", "holdtime", "afi", "safi", "route policy", "route map", "asn", "local as", "remote as"]):
+        playbook_slug, playbook_matches = find_playbook_slug(query)
+        all_matches = troubleshoot_matches + playbook_matches + ["bgp"]
+        
+        # Validate vendor for troubleshooting
+        allowed_vendors = ["iosxe", "junos"]  # TODO: make configurable
+
+        # Normalize vendor name
+        if vendor == "ios" or vendor == "cisco":
+            vendor = "iosxe"
+
+        if vendor and vendor not in allowed_vendors:
+            return _cache_and_return(
+                RouteDecision(
+                    intent="DEFINE",
+                    target="4271",  # Default to BGP RFC
+                    confidence=0.3,
+                    matches=all_matches,
+                    notes=f"BGP troubleshooting requested but vendor '{vendor}' not supported. Supported: {allowed_vendors}",
+                    mode_used="hybrid",
+                )
+            )
+
+        return _cache_and_return(
+            RouteDecision(
+                intent="TROUBLESHOOT",
+                target="bgp-neighbor-down",
+                confidence=get_confidence_score(all_matches, "TROUBLESHOOT"),
+                matches=all_matches,
+                notes=f"BGP troubleshooting detected for bgp-neighbor-down"
+                + (f" on {vendor}" if vendor else ""),
+                mode_used="hybrid",
+            )
+        )
+    
     if is_troubleshoot:
         playbook_slug, playbook_matches = find_playbook_slug(query)
         all_matches = troubleshoot_matches + playbook_matches
