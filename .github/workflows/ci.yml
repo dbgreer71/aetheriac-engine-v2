@@ -77,11 +77,18 @@ jobs:
       run: |
         pytest tests/ -m integration -v
     
+    - name: Sync RFCs and build index
+      run: |
+        bash scripts/sync_rfc_min.sh
+        python scripts/build_index.py
+    
     - name: Test API startup
       run: |
-        timeout 30s python -m ae2.api.main &
+        timeout 30s AE_INDEX_DIR="$(pwd)/data/index" AE_BIND_PORT=8001 python -m ae2.api.main &
         sleep 5
-        curl -f http://localhost:8000/healthz || exit 1
+        curl -f http://localhost:8001/healthz || exit 1
+        curl -f "http://localhost:8001/debug/explain?query=what%20is%20ospf" || exit 1
+        curl -f -X POST "http://localhost:8001/query" -H "Content-Type: application/json" -d '{"query":"What is OSPF?","top_k":3}' || exit 1
 
   build:
     runs-on: ubuntu-latest
