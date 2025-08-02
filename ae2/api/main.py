@@ -51,6 +51,26 @@ async def lifespan(app: FastAPI):
         except ImportError:
             logger.warning("Cache module not available, continuing without cache")
 
+    # Initialize observability if enabled
+    json_logs_enabled = os.getenv("AE_JSON_LOGS", "1").lower() in ("1", "true", "yes")
+    if json_logs_enabled:
+        try:
+            from ae2.obs.logging import setup_json_logging
+            from ae2.obs.middleware import ObservabilityMiddleware
+
+            log_sample_rate = float(os.getenv("AE_LOG_SAMPLE", "1.0"))
+            setup_json_logging(sample_rate=log_sample_rate)
+
+            # Register middleware
+            app.add_middleware(ObservabilityMiddleware, sample_rate=log_sample_rate)
+            logger.info(
+                "Observability middleware registered: sample_rate=%.2f", log_sample_rate
+            )
+        except ImportError:
+            logger.warning(
+                "Observability modules not available, continuing without structured logging"
+            )
+
     store = IndexStore(AE_INDEX_DIR)
     concept_store = ConceptStore()
     # load manifest and compute current hash for /debug/index
