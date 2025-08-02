@@ -5,6 +5,9 @@ on: [push, pull_request]
 env:
   PIP_CACHE: ~/.cache/pip
   INDEX_DIR: data/index
+  ENABLE_DENSE: "0"
+  AE_BIND_PORT: "8001"
+  CONCEPT_MIN_SCORE: "0.05"
 
 jobs:
   test-api:
@@ -51,4 +54,7 @@ jobs:
           pkill -f "ae2.api.main" || true
 
       - name: Tests
-        run: AE_INDEX_DIR="$(pwd)/${INDEX_DIR}" ENABLE_DENSE=0 pytest -q
+        run: AE_INDEX_DIR="$(pwd)/${INDEX_DIR}" pytest -q
+
+      - name: Concept Tests
+        run: AE_INDEX_DIR="$(pwd)/${INDEX_DIR}" pytest -q tests/test_concepts.py

@@ -255,6 +255,125 @@ Expected results:
 - The system will fallback to TF-IDF only if `bm25_tokens.npy` is missing
 - Rebuild index to regenerate: `python scripts/build_index.py`
 
+### Concept Cards
+
+Concept Cards provide structured knowledge about network concepts with evidence and provenance. They are automatically compiled from RFC search results and stored with full traceability.
+
+**Compile a Concept Card:**
+```bash
+curl -X POST "http://localhost:8000/concepts/compile?slug=arp"
+```
+
+Response:
+```json
+{
+  "id": "concept:arp:v1",
+  "definition": {
+    "text": "ARP (Address Resolution Protocol) is defined as...",
+    "rfc_number": 826,
+    "section": "1",
+    "url": "https://www.rfc-editor.org/rfc/rfc826.txt"
+  },
+  "claims": [
+    {
+      "text": "ARP maps IP addresses to MAC addresses...",
+      "evidence": [
+        {
+          "type": "rfc",
+          "url_or_path": "https://www.rfc-editor.org/rfc/rfc826.txt",
+          "sha256": "a1b2c3d4e5f6..."
+        }
+      ]
+    }
+  ],
+  "provenance": {
+    "built_at": "2024-01-01T12:00:00Z"
+  }
+}
+```
+
+**Retrieve a Concept Card:**
+```bash
+curl "http://localhost:8000/concepts/concept:arp:v1"
+```
+
+**Debug Concept Card with Retrieval Trace:**
+```bash
+curl "http://localhost:8000/debug/concept/concept:arp:v1"
+```
+
+**List All Concept Cards:**
+```bash
+curl "http://localhost:8000/concepts"
+```
+
+**Storage Location:**
+Concept cards are stored in `data/concepts/` with a manifest file tracking all cards and their SHA256 hashes for integrity verification.
+
+**Retrieval Heuristic:**
+The compiler prefers definitional sections (Introduction, Overview, Terminology) and specific RFCs (RFC 826 for ARP, RFC 2328 for OSPF, etc.) when building concept cards.
+
+**Error Handling:**
+Concept compilation uses typed error codes for predictable failure handling:
+
+| Error Code | Description |
+|------------|-------------|
+| `LOW_CONFIDENCE` | Top retrieval score below `CONCEPT_MIN_SCORE` threshold |
+| `NO_MATCH` | No search results returned (rare with TF-IDF/BM25) |
+| `BAD_CARD` | Concept card assembly or validation failure |
+| `MISSING_CITATION` | Required evidence or citation data incomplete |
+
+**Configuration:**
+Set `CONCEPT_MIN_SCORE` environment variable to control confidence threshold (default: 0.05).
+
+**Example Error Response:**
+```bash
+curl -X POST "http://localhost:8000/concepts/compile?slug=xyz123nonexistent"
+```
+
+```json
+{
+  "detail": {
+    "error": "concept_compile_error",
+    "code": "LOW_CONFIDENCE",
+    "message": "No section above min_score=0.05",
+    "slug": "xyz123nonexistent"
+  }
+}
+```
+
+**Example Success Response:**
+```bash
+curl -X POST "http://localhost:8000/concepts/compile?slug=arp"
+```
+
+```json
+{
+  "id": "concept:arp:v1",
+  "definition": {
+    "text": "ARP (Address Resolution Protocol) is defined as...",
+    "rfc_number": 826,
+    "section": "1",
+    "url": "https://www.rfc-editor.org/rfc/rfc826.txt"
+  },
+  "claims": [
+    {
+      "text": "ARP maps IP addresses to MAC addresses...",
+      "evidence": [
+        {
+          "type": "rfc",
+          "url_or_path": "https://www.rfc-editor.org/rfc/rfc826.txt",
+          "sha256": "a1b2c3d4e5f6..."
+        }
+      ]
+    }
+  ],
+  "provenance": {
+    "built_at": "2024-01-01T12:00:00Z"
+  }
+}
+```
+
 ### RFC Synchronization
 
 ```bash
