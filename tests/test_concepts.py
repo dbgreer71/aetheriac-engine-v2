@@ -292,158 +292,149 @@ class TestConceptAPI:
 
     def test_compile_concept_api(self, api_client):
         """Test POST /concepts/compile endpoint."""
-        with api_client as client:
-            response = client.post("/concepts/compile?slug=arp")
+        response = api_client.post("/concepts/compile?slug=arp")
 
-            assert response.status_code == 200
-            data = response.json()
+        assert response.status_code == 200
+        data = response.json()
 
-            assert data["id"].startswith("concept:arp:")
-            assert data["definition"]["rfc_number"] in [826, 1812]
-            assert len(data["definition"]["text"]) > 0
-            assert "claims" in data
-            assert "provenance" in data
+        assert data["id"].startswith("concept:arp:")
+        assert data["definition"]["rfc_number"] in [826, 1812]
+        assert len(data["definition"]["text"]) > 0
+        assert "claims" in data
+        assert "provenance" in data
 
     def test_get_concept_api(self, api_client):
         """Test GET /concepts/{slug} endpoint."""
-        with api_client as client:
-            # First compile and save a concept
-            compile_response = client.post("/concepts/compile?slug=arp&save=true")
-            assert compile_response.status_code == 200
+        # First compile and save a concept
+        compile_response = api_client.post("/concepts/compile?slug=arp&save=true")
+        assert compile_response.status_code == 200
 
-            # Then retrieve it by slug
-            response = client.get("/concepts/arp")
-            assert response.status_code == 200
-            data = response.json()
+        # Then retrieve it by slug
+        response = api_client.get("/concepts/arp")
+        assert response.status_code == 200
+        data = response.json()
 
-            assert data["id"].startswith("concept:arp:")
-            assert data["definition"]["rfc_number"] in [826, 1812]
+        assert data["id"].startswith("concept:arp:")
+        assert data["definition"]["rfc_number"] in [826, 1812]
 
     def test_debug_concept_api(self, api_client):
         """Test GET /debug/concept/{id} endpoint."""
-        with api_client as client:
-            # First compile a concept
-            compile_response = client.post("/concepts/compile?slug=arp")
-            assert compile_response.status_code == 200
-            card_id = compile_response.json()["id"]
+        # First compile a concept
+        compile_response = api_client.post("/concepts/compile?slug=arp")
+        assert compile_response.status_code == 200
+        card_id = compile_response.json()["id"]
 
-            # Then get debug info
-            response = client.get(f"/debug/concept/{card_id}")
-            assert response.status_code == 200
-            data = response.json()
+        # Then get debug info
+        response = api_client.get(f"/debug/concept/{card_id}")
+        assert response.status_code == 200
+        data = response.json()
 
-            assert "card" in data
-            assert "retrieval_trace" in data
-            assert data["card"]["id"] == card_id
+        assert "card" in data
+        assert "retrieval_trace" in data
+        assert data["card"]["id"] == card_id
 
-            # Check retrieval trace
-            trace = data["retrieval_trace"]
-            assert "slug" in trace
-            assert "target_rfcs" in trace
-            assert "top_hits" in trace
-            assert len(trace["top_hits"]) > 0
+        # Check retrieval trace
+        trace = data["retrieval_trace"]
+        assert "slug" in trace
+        assert "target_rfcs" in trace
+        assert "top_hits" in trace
+        assert len(trace["top_hits"]) > 0
 
-            # Check that top hits have scores
-            for hit in trace["top_hits"]:
-                assert "scores" in hit
-                scores = hit["scores"]
-                assert "tfidf" in scores
-                assert "bm25" in scores
-                assert "hybrid" in scores
+        # Check that top hits have scores
+        for hit in trace["top_hits"]:
+            assert "scores" in hit
+            scores = hit["scores"]
+            assert "tfidf" in scores
+            assert "bm25" in scores
+            assert "hybrid" in scores
 
     def test_list_concepts_api(self, api_client):
         """Test GET /concepts/list endpoint."""
-        with api_client as client:
-            # Compile and save a concept first
-            client.post("/concepts/compile?slug=arp&save=true")
+        # Compile and save a concept first
+        api_client.post("/concepts/compile?slug=arp&save=true")
 
-            # List concepts
-            response = client.get("/concepts/list")
-            assert response.status_code == 200
-            data = response.json()
+        # List concepts
+        response = api_client.get("/concepts/list")
+        assert response.status_code == 200
+        data = response.json()
 
-            assert isinstance(data, list)
-            assert len(data) >= 1
+        assert isinstance(data, list)
+        assert len(data) >= 1
 
-            # Check structure of first item
-            concept = data[0]
-            assert "id" in concept
-            assert "sha256" in concept
-            assert "built_at" in concept
-            assert "bytes" in concept
+        # Check structure of first item
+        concept = data[0]
+        assert "id" in concept
+        assert "sha256" in concept
+        assert "built_at" in concept
+        assert "bytes" in concept
 
     def test_get_nonexistent_concept(self, api_client):
         """Test getting a nonexistent concept."""
-        with api_client as client:
-            response = client.get("/concepts/nonexistent")
-            assert response.status_code == 404
+        response = api_client.get("/concepts/nonexistent")
+        assert response.status_code == 404
 
     def test_compile_invalid_slug_api(self, api_client):
         """Test compiling with invalid slug via API."""
-        with api_client as client:
-            response = client.post("/concepts/compile?slug=xyz123nonexistent")
-            assert response.status_code == 400
+        response = api_client.post("/concepts/compile?slug=xyz123nonexistent")
+        assert response.status_code == 400
 
     def test_debug_index_includes_concepts(self, api_client):
         """Test that /debug/index includes concept counts and hashes."""
-        with api_client as client:
-            # Compile a concept first
-            client.post("/concepts/compile?slug=arp")
+        # Compile a concept first
+        api_client.post("/concepts/compile?slug=arp")
 
-            # Check debug index
-            response = client.get("/debug/index")
-            assert response.status_code == 200
-            data = response.json()
+        # Check debug index
+        response = api_client.get("/debug/index")
+        assert response.status_code == 200
+        data = response.json()
 
-            # Verify concept fields are present
-            assert "concepts_count" in data
-            assert "concepts_root_hash" in data
-            assert isinstance(data["concepts_count"], int)
-            assert data["concepts_count"] >= 1  # Should have at least the ARP concept
+        # Verify concept fields are present
+        assert "concepts_count" in data
+        assert "concepts_root_hash" in data
+        assert isinstance(data["concepts_count"], int)
+        assert data["concepts_count"] >= 1  # Should have at least the ARP concept
 
-            # If concepts exist, hash should be present
-            if data["concepts_count"] > 0:
-                assert data["concepts_root_hash"] is not None
-                assert len(data["concepts_root_hash"]) == 64  # SHA256 hex length
+        # If concepts exist, hash should be present
+        if data["concepts_count"] > 0:
+            assert data["concepts_root_hash"] is not None
+            assert len(data["concepts_root_hash"]) == 64  # SHA256 hex length
 
     def test_compile_with_save(self, api_client):
         """Test compiling with save=true parameter."""
-        with api_client as client:
-            # Compile and save
-            response = client.post("/concepts/compile?slug=arp&save=true")
-            assert response.status_code == 200
-            data = response.json()
+        # Compile and save
+        response = api_client.post("/concepts/compile?slug=arp&save=true")
+        assert response.status_code == 200
+        data = response.json()
 
-            assert data["id"].startswith("concept:arp:")
-            assert "definition" in data
-            assert "provenance" in data
+        assert data["id"].startswith("concept:arp:")
+        assert "definition" in data
+        assert "provenance" in data
 
-            # Verify the concept was actually saved
-            list_response = client.get("/concepts/list")
-            assert list_response.status_code == 200
-            concepts = list_response.json()
-            assert any(c["id"] == "arp" for c in concepts)
+        # Verify the concept was actually saved
+        list_response = api_client.get("/concepts/list")
+        assert list_response.status_code == 200
+        concepts = list_response.json()
+        assert any(c["id"] == "arp" for c in concepts)
 
     def test_concepts_list_endpoint(self, api_client):
         """Test GET /concepts/list endpoint."""
-        with api_client as client:
-            # Compile and save a concept first
-            client.post("/concepts/compile?slug=arp&save=true")
+        # Compile and save a concept first
+        api_client.post("/concepts/compile?slug=arp&save=true")
 
-            # List concepts
-            response = client.get("/concepts/list")
-            assert response.status_code == 200
-            data = response.json()
+        # List concepts
+        response = api_client.get("/concepts/list")
+        assert response.status_code == 200
+        data = response.json()
 
-            assert isinstance(data, list)
-            assert len(data) >= 1
+        assert isinstance(data, list)
+        assert len(data) >= 1
 
-            # Check structure of first item
-            concept = data[0]
-            assert "id" in concept
-            assert "sha256" in concept
-            assert "built_at" in concept
-            assert "bytes" in concept
+        # Check structure of first item
+        concept = data[0]
+        assert "id" in concept
+        assert "sha256" in concept
+        assert "built_at" in concept
+        assert "bytes" in concept
 
 
 if __name__ == "__main__":

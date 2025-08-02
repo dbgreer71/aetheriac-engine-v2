@@ -80,6 +80,26 @@ CANONICAL_RFC_MAP: Dict[str, int] = {
     "mstp": 8021,
 }
 
+# LEXICON for the definitional router
+LEXICON: Dict[str, List[str]] = {
+    "protocol_terms": [
+        "ospf",
+        "arp",
+        "tcp",
+        "udp",
+        "dns",
+        "bgp",
+        "ip",
+        "ipv6",
+        "icmp",
+        "dhcp",
+        "vlan",
+        "stp",
+        "rstp",
+        "mstp",
+    ],
+}
+
 # Playbook slug mappings for troubleshooting
 PLAYBOOK_SLUG_MAP: Dict[str, str] = {
     "ospf neighbor": "ospf-neighbor-down",
