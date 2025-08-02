@@ -35,9 +35,11 @@ class IndexStore:
                 title = (sec.get("title") or "").lower()
                 section = sec.get("section", "")
                 if title.startswith("introduction") or "overview" in title:
-                    boost += 0.05
+                    boost += 0.12
                 if section == "1" or section.startswith("1."):
-                    boost += 0.03
+                    boost += 0.08
+                if title.startswith(("intro", "overview", "definition", "terminology", "abstract")):
+                    boost += 0.05
                 return boost
             return 0.0
 
