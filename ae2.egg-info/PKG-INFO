@@ -10,6 +10,7 @@ Requires-Dist: scikit-learn
 Requires-Dist: scipy
 Requires-Dist: requests
 Requires-Dist: tqdm
+Requires-Dist: rank-bm25>=0.2.2
 Provides-Extra: test
 Requires-Dist: pytest; extra == "test"
 Requires-Dist: httpx; extra == "test"

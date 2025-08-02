@@ -2,6 +2,10 @@ name: CI
 
 on: [push, pull_request]
 
+env:
+  PIP_CACHE: ~/.cache/pip
+  INDEX_DIR: data/index
+
 jobs:
   test-api:
     runs-on: ubuntu-latest
@@ -13,33 +17,38 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PIP_CACHE }}
+          key: pip-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+
       - name: Install (editable)
-        run: |
-          pip install -e ".[test]"
+        run: pip install -e .
 
-      - name: Sync RFCs & Build index
-        run: |
-          bash scripts/sync_rfc_min.sh
-          python scripts/build_index.py
+      - name: Cache RFC index
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.INDEX_DIR }}
+          key: rfcindex-${{ hashFiles('data/index/manifest.json') }}
+          restore-keys: |
+            rfcindex-
 
-      - name: Start API (8001)
-        env:
-          AE_INDEX_DIR: ${{ github.workspace }}/data/index
-          AE_BIND_PORT: 8001
+      - name: Build index (if needed)
         run: |
-          python -m ae2.api.main & 
-          echo $! > api.pid
-          sleep 3
+          if [ ! -f "${INDEX_DIR}/sections.jsonl" ]; then
+            ./scripts/sync_rfc_min.sh
+            python scripts/build_index.py
+          fi
 
-      - name: Smoke tests
+      - name: API smoke
         run: |
+          AE_INDEX_DIR="$(pwd)/${INDEX_DIR}" AE_BIND_PORT=8001 ENABLE_DENSE=0 \
+            python -m ae2.api.main &
+          sleep 2
           curl -s http://localhost:8001/healthz | jq .
-          curl -s "http://localhost:8001/debug/explain?query=what%20is%20ospf" | jq .
-          curl -s -X POST http://localhost:8001/query \
-               -H "Content-Type: application/json" \
-               -d '{"query":"What is OSPF?","top_k":3}' | jq .
+          curl -s "http://localhost:8001/debug/explain?query=what%20is%20ospf&mode=hybrid" | jq .
+          pkill -f "ae2.api.main" || true
 
-      - name: Stop API
-        if: always()
-        run: |
-          kill $(cat api.pid) || true 
+      - name: Tests
+        run: AE_INDEX_DIR="$(pwd)/${INDEX_DIR}" ENABLE_DENSE=0 pytest -q

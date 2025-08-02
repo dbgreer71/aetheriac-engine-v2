@@ -1,5 +1,7 @@
 # Aetheriac Engine v2
 
+![CI](https://github.com/dbgreer71/aetheriac-engine-v2/actions/workflows/ci.yml/badge.svg)
+
 A clean-slate implementation of the Aetheriac Engine with contract-first design, content-addressed storage, and modular architecture for network knowledge retrieval.
 
 ## Overview
@@ -29,7 +31,7 @@ AE v2 is a complete rewrite of the Aetheriac Engine with the following key impro
 
 1. **RFC Sync**: Downloads RFC documents and sectionizes them into searchable chunks
 2. **Index Building**: Creates hybrid indexes (dense embeddings + BM25 sparse + TF-IDF)
-3. **Query Processing**: 
+3. **Query Processing**:
    - Router classifies query intent
    - Retriever finds relevant sections using configurable ranking modes
    - Assembler constructs coherent response
@@ -141,7 +143,7 @@ Response:
 The API supports three ranking modes via the `mode` parameter:
 
 - `tfidf`: Traditional TF-IDF scoring
-- `bm25`: BM25 probabilistic scoring  
+- `bm25`: BM25 probabilistic scoring
 - `hybrid`: Weighted combination of both (default)
 
 **Debug Explain Endpoint:**
@@ -448,4 +450,4 @@ MIT License - see LICENSE file for details.
 - [ ] Troubleshooting playbooks
 - [ ] Advanced routing
 - [ ] Performance optimization
-- [ ] Production deployment 
+- [ ] Production deployment
