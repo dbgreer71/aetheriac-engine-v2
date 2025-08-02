@@ -29,11 +29,13 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install (editable + test deps)
+      - name: Install (editable + tools)
         run: |
+          set -euox pipefail
           python -m pip install -U pip wheel
           python -m pip install -c constraints/ci.txt -e .
           python -m pip install -c constraints/ci.txt pytest
+          python -m pip freeze > ci_pip_freeze.txt
 
       - name: Prepare index
         run: |
@@ -42,35 +44,18 @@ jobs:
           python scripts/build_index.py
           ls -l data/index || true
 
-      - name: CI diagnostics
+      - name: Run smoke tests (print full output)
         run: |
-          python -V
-          which python
-          pip --version
-          python -c "import sys,site,platform,os; print({'py':sys.version,'ex':sys.executable,'plat':platform.platform(), 'cwd':os.getcwd()})"
-          pip freeze | tee ci_pip_freeze.txt
-          python - <<'PY'
-          import pkgutil, json, sys
-          mods = sorted([m.name for m in pkgutil.iter_modules() if m.name.startswith('ae2')])
-          print('AE2 modules:', mods)
-          PY
-
-      - name: Upload pip freeze
-        uses: actions/upload-artifact@v4
-        with:
-          name: ci-pip-freeze
-          path: ci_pip_freeze.txt
-
-      - name: Run smoke tests
-        run: |
-          set -euo pipefail
-          python -m pytest -q tests/ci_smoke_test.py -o log_cli=true -o log_cli_level=INFO | tee ci_pytest_smoke.log
+          set -euox pipefail
+          python -m pytest -vv tests/ci_smoke_test.py \
+            -o log_cli=true -o log_cli_level=INFO \
+            -rA --maxfail=1 --disable-warnings | tee ci_pytest_smoke.log
 
       - name: Upload smoke test log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ci-pytest-smoke
+          name: ci_smoke_log
           path: ci_pytest_smoke.log
 
   ci-full:
