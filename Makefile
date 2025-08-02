@@ -15,5 +15,16 @@ eval-concepts:
 eval-trouble:
 	AE_INDEX_DIR=$(PWD)/data/index ENABLE_DENSE=0 python -m ae2.eval.run --suite trouble --dataset sample --json eval_trouble.json --repeats 3 --strict
 
+docker-build:
+	docker build -t aev2:local .
+
+docker-run:
+	docker compose up -d
+	sleep 5
+	curl -sf http://localhost:8001/healthz | jq .
+
+perf-http:
+	python scripts/perf_http.py --base http://localhost:8001 --total 30 --concurrency 4 --json perf_http.json
+
 perf:
 	AE_INDEX_DIR=$(PWD)/data/index ENABLE_DENSE=0 python -m ae2.eval.run --suite defs --dataset sample --json /tmp/perf_defs.json --repeats 10
