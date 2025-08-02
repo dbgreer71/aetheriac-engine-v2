@@ -1,0 +1,27 @@
+{
+  "suite": "defs",
+  "dataset": "defs.sample",
+  "ts": "2025-08-02T14:09:41.677993Z",
+  "counts": {
+    "total": 8,
+    "ok": 8
+  },
+  "metrics": {
+    "intent_acc": 1.0,
+    "target_acc": 1.0,
+    "p_at_3": 0.333,
+    "ndcg_at_3": 1.0,
+    "latency_ms": {
+      "p50": 0.005,
+      "p95": 0.01,
+      "p99": 0.01,
+      "avg": 0.005
+    },
+    "citation_validity": 1.0
+  },
+  "failures": [],
+  "hashes": {
+    "dataset_sha256": "de5504e7b066d095606782cdc32147d59c311bb73523d0376895b87f5356e0e0",
+    "code_rev": "673fc5f"
+  }
+}

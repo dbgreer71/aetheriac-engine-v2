@@ -4,6 +4,17 @@
 
 A clean-slate implementation of the Aetheriac Engine with contract-first design, content-addressed storage, and modular architecture for network knowledge retrieval.
 
+## Quick Start
+
+```bash
+# Clone and run first-run demo
+git clone <repository-url>
+cd aetheriac-engine-v2
+make demo
+```
+
+The demo runs 6 curated queries (2 define, 2 concept, 2 troubleshoot) and prints `DEMO: PASS` if all evaluations meet expert-level thresholds.
+
 ## Overview
 
 AE v2 is a complete rewrite of the Aetheriac Engine with the following key improvements:
@@ -186,6 +197,158 @@ Response with debug scores:
 {
   "answer": "RFC 826",
   "citations": [
+
+### Troubleshooting Playbooks (v1)
+
+The playbook system provides deterministic troubleshooting workflows with vendor-specific commands and RFC citations.
+
+#### Execute OSPF Neighbor-Down Playbook
+```bash
+curl -X POST "http://localhost:8000/troubleshoot/ospf-neighbor" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "vendor": "iosxe",
+    "iface": "GigabitEthernet0/0",
+    "area": "0.0.0.0",
+    "auth": "md5",
+    "mtu": 1500
+  }'
+```
+
+Returns an ordered list of troubleshooting steps with vendor-specific commands:
+
+```json
+{
+  "playbook_id": "ospf-neighbor-down",
+  "steps": [
+    {
+      "rule_id": "check_neighbor_state",
+      "check": "Check OSPF neighbor state and adjacency status",
+      "result": "Check OSPF neighbor table for adjacency status",
+      "fix": null,
+      "verify": "Verify neighbor appears in show output",
+      "commands": ["show ip ospf neighbor"],
+      "citations": [
+        {
+          "rfc": 2328,
+          "section": "10.1",
+          "title": "Neighbor State Machine",
+          "url": "https://tools.ietf.org/html/rfc2328#section-10.1"
+        }
+      ]
+    }
+  ],
+  "debug": {
+    "matched_rules": 8,
+    "vendor": "iosxe"
+  }
+}
+```
+
+#### Explain Playbook
+```bash
+curl "http://localhost:8000/debug/explain_playbook?slug=ospf-neighbor-down&vendor=iosxe"
+```
+
+Returns playbook structure with rule conditions and command mappings.
+
+#### Supported Vendors
+- **IOS-XE**: Cisco IOS-XE commands (e.g., `show ip ospf neighbor`)
+- **Junos**: Juniper Junos commands (e.g., `show ospf neighbor`)
+
+#### Guardrails
+- **Read-only**: All commands are show commands only
+- **RFC citations**: Each step includes relevant RFC references
+- **Deterministic**: Same context produces identical results
+- **Vendor-specific**: Commands rendered for target vendor
+
+### Unified Router & Assembler (v2)
+
+The unified router automatically chooses between Definition, Concept Card, or Troubleshooting paths based on query analysis.
+
+#### Auto Mode Query
+```bash
+curl -X POST "http://localhost:8000/query?mode=auto" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "what is ospf"
+  }'
+```
+
+Returns intent and route information:
+```json
+{
+  "intent": "DEFINE",
+  "route": {
+    "target": "2328",
+    "evidence": {
+      "matched_terms": ["ospf"],
+      "confidence": 0.6,
+      "notes": "Definition query for RFC 2328"
+    }
+  },
+  "answer": "OSPF (Open Shortest Path First) is a link-state routing protocol...",
+  "citations": [...],
+  "confidence": 0.7,
+  "mode": "auto"
+}
+```
+
+#### Concept Card Query
+```bash
+curl -X POST "http://localhost:8000/query?mode=auto" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "arp concept card"
+  }'
+```
+
+#### Troubleshooting Query
+```bash
+curl -X POST "http://localhost:8000/query?mode=auto" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "ospf neighbor down on iosxe g0/0",
+    "vendor": "iosxe",
+    "iface": "GigabitEthernet0/0",
+    "area": "0.0.0.0"
+  }'
+```
+
+#### Debug Route Endpoint
+```bash
+curl "http://localhost:8000/debug/route?query=what%20is%20ospf"
+```
+
+Returns routing decision without assembly:
+```json
+{
+  "query": "what is ospf",
+  "intent": "DEFINE",
+  "target": "2328",
+  "confidence": 0.6,
+  "matches": ["ospf"],
+  "notes": "Definition query for RFC 2328",
+  "mode_used": "hybrid"
+}
+```
+
+#### Intent Detection
+- **TROUBLESHOOT**: Contains troubleshooting keywords + protocol + vendor
+- **CONCEPT**: Contains concept keywords or exact concept slug match
+- **DEFINE**: Default fallback for definitional queries
+
+#### Supported Modes
+- `auto`: Intelligent routing (new)
+- `hybrid`: BM25 + TF-IDF combination (existing)
+- `tfidf`: Traditional TF-IDF scoring (existing)
+- `bm25`: BM25 probabilistic scoring (existing)
+
+#### Guardrails
+- **Deterministic**: Same query produces identical routing
+- **Fallback**: Concept requests fall back to definition if card missing
+- **Vendor validation**: Only supported vendors (iosxe, junos) for troubleshooting
+- **Timeout**: 150ms assembly timeout enforced
     {
       "citation_text": "RFC 826 §1 — RFC 826",
       "url": "https://www.rfc-editor.org/rfc/rfc826.txt"
@@ -374,6 +537,285 @@ curl -X POST "http://localhost:8000/concepts/compile?slug=arp"
 }
 ```
 
+**Persistence and Browsing:**
+
+Compile and save a concept card:
+```bash
+curl -X POST "http://localhost:8000/concepts/compile?slug=arp&save=true"
+```
+
+List all saved concepts:
+```bash
+curl "http://localhost:8000/concepts/list"
+```
+
+Response:
+```json
+[
+  {
+    "id": "arp",
+    "sha256": "a1b2c3d4e5f6...",
+    "bytes": 1234,
+    "built_at": "2024-01-01T12:00:00Z",
+    "stale": false
+  }
+]
+```
+
+Retrieve a saved concept by slug:
+```bash
+curl "http://localhost:8000/concepts/arp"
+```
+
+**Rebuild and Delete:**
+
+Rebuild a concept card from the current index:
+```bash
+curl -X POST "http://localhost:8000/concepts/rebuild?slug=arp"
+```
+
+Delete a concept card:
+```bash
+curl -X DELETE "http://localhost:8000/concepts/arp"
+```
+
+**JSON Schema:**
+
+Get the JSON schema for concept cards:
+```bash
+curl "http://localhost:8000/concepts/schema"
+```
+
+Response snippet:
+```json
+{
+  "title": "ConceptCard",
+  "type": "object",
+  "properties": {
+    "id": {"type": "string"},
+    "definition": {"$ref": "#/$defs/Definition"},
+    "claims": {"type": "array", "items": {"$ref": "#/$defs/Claim"}},
+    "provenance": {"$ref": "#/$defs/Provenance"}
+  }
+}
+```
+
+**Stale Detection:**
+
+The `stale` flag indicates whether a concept card was compiled from a different index version than the current one. This is computed dynamically and not persisted:
+
+- `stale: false` - Card was compiled from the current index
+- `stale: true` - Card was compiled from a different index version
+
+The stale flag is included in both `/concepts/list` and `/concepts/{slug}` responses.
+
+**Evidence Integrity:**
+
+Concept cards now include enhanced evidence fields for better integrity:
+
+```json
+{
+  "evidence": [
+    {
+      "type": "rfc",
+      "url_or_path": "https://www.rfc-editor.org/rfc/rfc826.txt",
+      "sha256": "a1b2c3d4e5f6...",
+      "length": 1234,
+      "source": {
+        "type": "rfc",
+        "rfc_number": 826,
+        "section": "1",
+        "title": "Introduction",
+        "url": "https://www.rfc-editor.org/rfc/rfc826.txt"
+      }
+    }
+  ]
+}
+```
+
+**Deterministic Diff:**
+
+Compare stored and current concept cards:
+
+```bash
+# Diff stored vs current (recompiled from live index)
+curl "http://localhost:8000/concepts/diff/arp"
+
+# Diff stored vs stored (empty diff)
+curl "http://localhost:8000/concepts/diff/arp?recompile=false"
+```
+
+Response:
+```json
+{
+  "changed": {"definition": {"text": {"old": "...", "new": "..."}}},
+  "added": {},
+  "removed": {},
+  "provenance": {
+    "stored_index": "dcc9f79d...",
+    "live_index": "dcc9f79d..."
+  }
+}
+```
+
+**Bulk Compile:**
+
+Compile multiple concepts with bounded concurrency:
+
+```bash
+curl -X POST "http://localhost:8000/concepts/compile_many?save=true" \
+     -H "Content-Type: application/json" \
+     -d '{"slugs": ["arp", "ospf", "tcp"], "mode": "hybrid"}'
+```
+
+Response:
+```json
+{
+  "ok": true,
+  "results": [
+    {
+      "slug": "arp",
+      "status": "ok",
+      "id": "concept:arp:v1",
+      "sha256": "a1b2c3d4...",
+      "saved": true
+    },
+    {
+      "slug": "bogus",
+      "status": "error",
+      "error": {
+        "code": "LOW_CONFIDENCE",
+        "message": "No section above min_score=0.05"
+      }
+    }
+  ],
+  "saved_count": 2
+}
+```
+
+**Export:**
+
+Export concepts to a ZIP file:
+
+```bash
+# Export all concepts
+curl -X POST "http://localhost:8000/concepts/export" \
+     --output concepts_export.zip
+
+# Export specific concepts
+curl -X POST "http://localhost:8000/concepts/export" \
+     -H "Content-Type: application/json" \
+     -d '{"slugs": ["arp", "ospf"]}' \
+     --output concepts_export.zip
+```
+
+The ZIP contains:
+- `concepts_manifest.json` - Current manifest
+- `cards/<slug>.json` - Individual concept files (sorted alphabetically)
+
+**Cross-links & Tags:**
+
+Concept cards now support cross-linking and tagging:
+
+```json
+{
+  "id": "concept:arp:v1",
+  "definition": {...},
+  "claims": [...],
+  "provenance": {...},
+  "related": ["ospf", "default-route"],
+  "tags": ["arp", "l2", "routing"]
+}
+```
+
+**Reference Validation:**
+
+Validate cross-links and detect cycles:
+
+```bash
+# Validate references for a concept
+curl "http://localhost:8000/concepts/validate/arp"
+```
+
+Response:
+```json
+{
+  "ok": true,
+  "missing": [],
+  "cycles": []
+}
+```
+
+**Pull-through Compilation:**
+
+Automatically compile referenced concepts:
+
+```bash
+# Compile arp and pull through its related concepts
+curl -X POST "http://localhost:8000/concepts/compile?slug=arp&save=true&pull=true"
+```
+
+Response:
+```json
+{
+  "id": "concept:arp:v1",
+  "related": ["ospf", "default-route"],
+  "pulled": ["ospf"],
+  "pulled_errors": []
+}
+```
+
+**Concept Search:**
+
+Search persisted concept cards:
+
+```bash
+# Search for concepts
+curl "http://localhost:8000/concepts/search?q=routing&limit=5"
+```
+
+Response:
+```json
+{
+  "total": 3,
+  "items": [
+    {
+      "id": "arp",
+      "score": 0.85,
+      "tags": ["arp", "l2", "routing"],
+      "stale": false
+    }
+  ]
+}
+```
+
+**Tag Aggregation:**
+
+Get tag usage statistics:
+
+```bash
+# Get tag counts
+curl "http://localhost:8000/concepts/tags"
+```
+
+Response:
+```json
+{
+  "tags": [
+    {"tag": "routing", "count": 5},
+    {"tag": "arp", "count": 2},
+    {"tag": "ospf", "count": 1}
+  ]
+}
+```
+
+**Deterministic Behavior:**
+
+- Cross-links and tags are sorted deterministically when served
+- Search results are ranked by TF-IDF score, with ties broken by slug (ascending)
+- Tag aggregation is sorted by count (descending), then by tag (ascending)
+- Pull-through compilation is limited to depth=1 (no recursion beyond one hop)
+
 ### RFC Synchronization
 
 ```bash
@@ -425,6 +867,142 @@ Test categories:
 - **Definition queries**: "What is ARP?", "Define OSPF"
 - **Concept queries**: "Compare ARP and DNS", "Difference between OSPF and BGP"
 - **Troubleshooting queries**: "OSPF neighbor down", "BGP not working"
+
+## Evaluation & Gates
+
+### Running Evaluations Locally
+
+```bash
+# Build index first
+scripts/sync_rfc_min.sh && python scripts/build_index.py
+
+# Run evaluation suites
+make eval-defs      # Definition evaluation
+make eval-concepts  # Concept card evaluation
+make eval-trouble   # Troubleshooting evaluation
+
+# Performance testing
+make perf           # 10-repeat performance test
+```
+
+### Evaluation Reports
+
+Reports are written to JSON files:
+- `eval_defs.json` - Definition accuracy and retrieval metrics
+- `eval_concepts.json` - Concept card faithfulness and citation validity
+- `eval_trouble.json` - Troubleshooting success and determinism
+
+### Metrics
+
+**Definition Evaluation**:
+- `intent_acc`: Query classification accuracy (target: ≥95%)
+- `target_acc`: Correct RFC identification (target: ≥92%)
+- `p_at_3`: Precision at 3 for retrieval (target: ≥90%)
+- `ndcg_at_3`: Normalized DCG at 3 (target: ≥0.92)
+- `latency_ms`: Response time percentiles (target: p95 ≤150ms)
+
+**Concept Evaluation**:
+- `faithfulness`: All claims have evidence (target: 100%)
+- `citation_validity`: Citations include RFC URL + section (target: 100%)
+- `latency_ms`: Response time percentiles (target: p95 ≤200ms)
+
+**Troubleshooting Evaluation**:
+- `pass_min_steps`: Minimum troubleshooting steps met (target: ≥85%)
+- `deterministic`: Identical steps across runs (target: 100%)
+- `latency_ms`: Response time percentiles (target: p95 ≤250ms)
+
+**Note**: Current thresholds are staged for plumbing validation. They will be tightened to "Expert-or-bust" levels in future releases.
+
+## First-Run Demo
+
+The `make demo` command provides a quick validation of expert-level performance:
+
+```bash
+make demo
+```
+
+**What the demo runs**:
+- 2 definition queries (OSPF, TCP) with citation validation
+- 2 concept cards (ARP, default route) with evidence checking
+- 2 troubleshooting cases (OSPF neighbor down, interface issues) with step validation
+
+**Output**: `DEMO: PASS` if all evaluations meet thresholds, `DEMO: FAIL` otherwise.
+
+This ensures the system works for new users immediately and meets expert standards before any release.
+
+## Run with Docker
+
+### Quick Start with Docker
+
+```bash
+# Build and run with Docker Compose
+make docker-run
+
+# Or manually
+docker build -t aev2:local .
+docker compose up -d
+
+# Check health
+curl http://localhost:8001/healthz
+```
+
+### Docker Configuration
+
+The Docker setup includes:
+- **Base image**: `python:3.10-slim` for minimal size
+- **Non-root user**: `aev2` user for security
+- **Health checks**: Automatic health monitoring
+- **Volume mounts**: Data directory mounted for persistence
+- **Environment variables**: Configurable via docker-compose.yml
+
+### Environment Variables
+
+Key environment variables for Docker:
+- `AE_BIND_PORT`: API port (default: 8001)
+- `ENABLE_DENSE`: Enable dense embeddings (default: 0)
+- `AE_INDEX_DIR`: Index directory path
+- `AE_CACHE_ENABLED`: Enable TTL LRU cache (default: 0)
+- `AE_CACHE_TTL_S`: Cache TTL in seconds (default: 300)
+- `AE_CACHE_SIZE`: Maximum cache size (default: 1000)
+
+## Performance
+
+### HTTP Performance Testing
+
+```bash
+# Run performance test
+make perf-http
+
+# Or manually with custom parameters
+python scripts/perf_http.py --base http://localhost:8001 --total 100 --concurrency 10 --json perf_http.json
+```
+
+### Performance Metrics
+
+The performance harness measures:
+- **Latency percentiles**: P50, P90, P95, P99
+- **Throughput**: Requests per second
+- **Success rate**: Percentage of successful requests
+- **Error analysis**: Detailed error reporting
+
+### Performance Tuning
+
+**Environment Variables for Performance**:
+- `AE_WORKERS`: Number of API workers (default: 1)
+- `AE_CACHE_ENABLED`: Enable caching (default: 0)
+- `AE_CACHE_TTL_S`: Cache TTL in seconds (default: 300)
+- `AE_CACHE_SIZE`: Maximum cache size (default: 1000)
+
+**Cache Configuration**:
+```bash
+# Enable cache with 60s TTL and 512 items
+AE_CACHE_ENABLED=1 AE_CACHE_TTL_S=60 AE_CACHE_SIZE=512 python -m ae2.api.main
+```
+
+**Performance Reports**:
+- `perf_http.json`: Detailed performance metrics
+- CI artifacts: Performance reports uploaded to GitHub Actions
+- Thresholds: P95 latency ≤ 250ms (configurable)
 
 ## Development
 
@@ -565,8 +1143,13 @@ MIT License - see LICENSE file for details.
 - [ ] Lab integration
 - [ ] Vendor command IR
 
-### Phase 3 (Planned)
-- [ ] Troubleshooting playbooks
+### Phase 3 (Complete)
+- [x] Troubleshooting playbooks
+- [x] OSPF neighbor-down playbook
+- [x] Vendor command IR (IOS-XE, Junos)
+- [x] Deterministic rule execution
+
+### Phase 4 (Planned)
 - [ ] Advanced routing
 - [ ] Performance optimization
 - [ ] Production deployment

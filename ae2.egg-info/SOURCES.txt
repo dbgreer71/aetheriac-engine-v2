@@ -7,6 +7,12 @@ pyproject.toml
 ./ae2/assembler/definition_assembler.py
 ./ae2/cases/__init__.py
 ./ae2/concepts/__init__.py
+./ae2/concepts/compiler.py
+./ae2/concepts/diff.py
+./ae2/concepts/errors.py
+./ae2/concepts/models.py
+./ae2/concepts/search.py
+./ae2/concepts/store.py
 ./ae2/contracts/__init__.py
 ./ae2/contracts/models.py
 ./ae2/contracts/settings.py
@@ -37,6 +43,11 @@ ae2/assembler/__init__.py
 ae2/assembler/definition_assembler.py
 ae2/cases/__init__.py
 ae2/concepts/__init__.py
+ae2/concepts/compiler.py
+ae2/concepts/diff.py
+ae2/concepts/errors.py
+ae2/concepts/models.py
+ae2/concepts/store.py
 ae2/contracts/__init__.py
 ae2/contracts/models.py
 ae2/contracts/settings.py
@@ -56,3 +67,5 @@ ae2/testing/__init__.py
 ae2/testing/golden_tests.py
 ae2/vendor_ir/__init__.py
 tests/test_basic.py
+tests/test_concepts.py
+tests/test_hybrid.py
