@@ -15,6 +15,14 @@ from .lexicon import (
     get_confidence_score,
 )
 
+# Import cache if available
+try:
+    from ..common.ttl_lru import cache_get, cache_set
+
+    CACHE_AVAILABLE = True
+except ImportError:
+    CACHE_AVAILABLE = False
+
 
 @dataclass
 class RouteDecision:
@@ -39,7 +47,21 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
     Returns:
         RouteDecision with intent, target, and metadata
     """
+    # Check cache first
+    if CACHE_AVAILABLE:
+        cache_key = f"route:{query}"
+        cached_result = cache_get(cache_key)
+        if cached_result is not None:
+            return cached_result
+
     query_lower = query.lower()
+
+    def _cache_and_return(decision: RouteDecision) -> RouteDecision:
+        """Cache the decision and return it."""
+        if CACHE_AVAILABLE:
+            cache_key = f"route:{query}"
+            cache_set(cache_key, decision)
+        return decision
 
     # Check for troubleshooting intent first (highest priority)
     is_troubleshoot, troubleshoot_matches, vendor = extract_troubleshoot_terms(query)
@@ -55,23 +77,27 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
             vendor = "iosxe"
 
         if vendor and vendor not in allowed_vendors:
-            return RouteDecision(
-                intent="DEFINE",
-                target="2328",  # Default to OSPF RFC
-                confidence=0.3,
-                matches=all_matches,
-                notes=f"Troubleshooting requested but vendor '{vendor}' not supported. Supported: {allowed_vendors}",
-                mode_used="hybrid",
+            return _cache_and_return(
+                RouteDecision(
+                    intent="DEFINE",
+                    target="2328",  # Default to OSPF RFC
+                    confidence=0.3,
+                    matches=all_matches,
+                    notes=f"Troubleshooting requested but vendor '{vendor}' not supported. Supported: {allowed_vendors}",
+                    mode_used="hybrid",
+                )
             )
 
-        return RouteDecision(
-            intent="TROUBLESHOOT",
-            target=playbook_slug,
-            confidence=get_confidence_score(all_matches, "TROUBLESHOOT"),
-            matches=all_matches,
-            notes=f"Troubleshooting detected for {playbook_slug}"
-            + (f" on {vendor}" if vendor else ""),
-            mode_used="hybrid",
+        return _cache_and_return(
+            RouteDecision(
+                intent="TROUBLESHOOT",
+                target=playbook_slug,
+                confidence=get_confidence_score(all_matches, "TROUBLESHOOT"),
+                matches=all_matches,
+                notes=f"Troubleshooting detected for {playbook_slug}"
+                + (f" on {vendor}" if vendor else ""),
+                mode_used="hybrid",
+            )
         )
 
     # Check for concept intent
@@ -87,15 +113,17 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
                     # Check if concept card exists
                     try:
                         concept_store.load(f"concept:{concept}:v1")
-                        return RouteDecision(
-                            intent="CONCEPT",
-                            target=f"concept:{concept}:v1",
-                            confidence=get_confidence_score(
-                                concept_matches + [concept], "CONCEPT"
-                            ),
-                            matches=concept_matches + [concept],
-                            notes=f"Concept card found for {concept}",
-                            mode_used="hybrid",
+                        return _cache_and_return(
+                            RouteDecision(
+                                intent="CONCEPT",
+                                target=f"concept:{concept}:v1",
+                                confidence=get_confidence_score(
+                                    concept_matches + [concept], "CONCEPT"
+                                ),
+                                matches=concept_matches + [concept],
+                                notes=f"Concept card found for {concept}",
+                                mode_used="hybrid",
+                            )
                         )
                     except FileNotFoundError:
                         # Concept card doesn't exist, fall back to definition
@@ -103,24 +131,28 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
 
         # If no concept card found, fall back to definition
         rfc_num, rfc_matches = find_canonical_rfc(query)
-        return RouteDecision(
-            intent="DEFINE",
-            target=str(rfc_num),
-            confidence=0.4,  # Lower confidence due to fallback
-            matches=concept_matches + rfc_matches,
-            notes="Concept requested but card not found, falling back to definition",
-            mode_used="hybrid",
+        return _cache_and_return(
+            RouteDecision(
+                intent="DEFINE",
+                target=str(rfc_num),
+                confidence=0.4,  # Lower confidence due to fallback
+                matches=concept_matches + rfc_matches,
+                notes="Concept requested but card not found, falling back to definition",
+                mode_used="hybrid",
+            )
         )
 
     # Default to definition intent
     rfc_num, rfc_matches = find_canonical_rfc(query)
-    return RouteDecision(
-        intent="DEFINE",
-        target=str(rfc_num),
-        confidence=get_confidence_score(rfc_matches, "DEFINE"),
-        matches=rfc_matches,
-        notes=f"Definition query for RFC {rfc_num}",
-        mode_used="hybrid",
+    return _cache_and_return(
+        RouteDecision(
+            intent="DEFINE",
+            target=str(rfc_num),
+            confidence=get_confidence_score(rfc_matches, "DEFINE"),
+            matches=rfc_matches,
+            notes=f"Definition query for RFC {rfc_num}",
+            mode_used="hybrid",
+        )
     )
 
 

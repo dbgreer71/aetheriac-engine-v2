@@ -9,6 +9,14 @@ import re
 from scipy import sparse
 from sklearn.metrics.pairwise import cosine_similarity
 
+# Import cache if available
+try:
+    from ..common.ttl_lru import cache_get, cache_set
+
+    CACHE_AVAILABLE = True
+except ImportError:
+    CACHE_AVAILABLE = False
+
 # Try to import BM25, fallback gracefully
 try:
     from rank_bm25 import BM25Okapi
@@ -96,6 +104,12 @@ class IndexStore:
         rfc_filter: Optional[List[int]] = None,
         mode: str = "hybrid",
     ):
+        # Check cache first
+        if CACHE_AVAILABLE:
+            cache_key = f"search:{query}:{top_k}:{rfc_filter}:{mode}"
+            cached_result = cache_get(cache_key)
+            if cached_result is not None:
+                return cached_result
         # Get weights from environment
         w_tfidf = float(os.getenv("HYBRID_W_TFIDF", "0.6"))
         w_bm25 = float(os.getenv("HYBRID_W_BM25", "0.4"))
@@ -183,4 +197,10 @@ class IndexStore:
                     "scores": subscores,
                 }
             )
+
+        # Cache the result
+        if CACHE_AVAILABLE:
+            cache_key = f"search:{query}:{top_k}:{rfc_filter}:{mode}"
+            cache_set(cache_key, out)
+
         return out

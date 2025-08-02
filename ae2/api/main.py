@@ -37,6 +37,20 @@ async def lifespan(app: FastAPI):
 
     logger = logging.getLogger(__name__)
     logger.info("AE v2 lifespan startup: loading index from %s", AE_INDEX_DIR)
+
+    # Initialize cache if enabled
+    cache_enabled = os.getenv("AE_CACHE_ENABLED", "0").lower() in ("1", "true", "yes")
+    if cache_enabled:
+        try:
+            from ae2.common.ttl_lru import init_cache
+
+            cache_size = int(os.getenv("AE_CACHE_SIZE", "1000"))
+            cache_ttl = int(os.getenv("AE_CACHE_TTL_S", "300"))
+            init_cache(maxsize=cache_size, ttl_seconds=cache_ttl)
+            logger.info("Cache initialized: size=%d, ttl=%ds", cache_size, cache_ttl)
+        except ImportError:
+            logger.warning("Cache module not available, continuing without cache")
+
     store = IndexStore(AE_INDEX_DIR)
     concept_store = ConceptStore()
     # load manifest and compute current hash for /debug/index

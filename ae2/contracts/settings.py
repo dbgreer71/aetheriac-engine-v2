@@ -79,6 +79,11 @@ class Settings(BaseSettings):
     lab_topology_dir: Optional[Path] = Field(None, description="Lab topology directory")
     lab_artifact_dir: Optional[Path] = Field(None, description="Lab artifact directory")
 
+    # Cache settings
+    cache_enabled: bool = Field(default=False, description="Enable TTL LRU cache")
+    cache_ttl_seconds: int = Field(default=300, description="Cache TTL in seconds")
+    cache_size: int = Field(default=1000, description="Maximum cache size")
+
     @validator(
         "base_dir", "data_dir", "index_dir", "rfc_dir", "concepts_dir", "playbooks_dir"
     )
