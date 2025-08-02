@@ -112,3 +112,83 @@ jobs:
             eval_defs.json
             eval_concepts.json
             eval_trouble.json
+
+  perf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: eval
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PIP_CACHE }}
+          key: pip-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+
+      - name: Install (editable)
+        run: pip install -e .
+
+      - name: Cache RFC index
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.INDEX_DIR }}
+          key: rfcindex-${{ hashFiles('data/index/manifest.json') }}
+          restore-keys: |
+            rfcindex-
+
+      - name: Build index (if needed)
+        run: |
+          if [ ! -f "${INDEX_DIR}/sections.jsonl" ]; then
+            ./scripts/sync_rfc_min.sh
+            python scripts/build_index.py
+          fi
+
+      - name: Build and run Docker container
+        env:
+          ENABLE_DENSE: "0"
+          AE_BIND_PORT: "8001"
+          AE_INDEX_DIR: ${{ github.workspace }}/data/index
+          AE_CACHE_ENABLED: "1"
+          AE_CACHE_TTL_S: "60"
+          AE_CACHE_SIZE: "512"
+        run: |
+          docker build -t aev2:test .
+          docker run -d --name aev2-test \
+            -p 8001:8001 \
+            -v ${{ github.workspace }}/data:/app/data:ro \
+            -e AE_BIND_PORT=8001 \
+            -e ENABLE_DENSE=0 \
+            -e AE_INDEX_DIR=/app/data/index \
+            -e AE_CACHE_ENABLED=1 \
+            -e AE_CACHE_TTL_S=60 \
+            -e AE_CACHE_SIZE=512 \
+            aev2:test
+
+      - name: Wait for API readiness
+        run: |
+          timeout 60 bash -c 'until curl -sf http://localhost:8001/healthz; do sleep 2; done'
+
+      - name: Run performance test
+        run: |
+          python scripts/perf_http.py --base http://localhost:8001 --total 50 --concurrency 8 --json perf_http.json
+
+      - name: Check performance thresholds
+        run: |
+          p95_latency=$(jq -r '.latency_ms.p95' perf_http.json)
+          echo "P95 latency: ${p95_latency}ms"
+          if (( $(echo "$p95_latency > 250" | bc -l) )); then
+            echo "ERROR: P95 latency ${p95_latency}ms exceeds 250ms threshold"
+            exit 1
+          fi
+          echo "Performance test passed: P95 latency ${p95_latency}ms <= 250ms"
+
+      - name: Upload performance artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-reports
+          path: perf_http.json
