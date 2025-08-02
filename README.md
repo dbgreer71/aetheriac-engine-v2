@@ -1,6 +1,7 @@
 # Aetheriac Engine v2
 
-![CI](https://github.com/dbgreer71/aetheriac-engine-v2/actions/workflows/ci.yml/badge.svg)
+![CI / test-api](https://github.com/dbgreer71/aetheriac-engine-v2/actions/workflows/ci.yml/badge.svg?job=test-api)
+![Full CI](https://github.com/dbgreer71/aetheriac-engine-v2/actions/workflows/ci.yml/badge.svg?job=ci-full)
 
 A clean-slate implementation of the Aetheriac Engine with contract-first design, content-addressed storage, and modular architecture for network knowledge retrieval.
 
@@ -1063,6 +1064,45 @@ All requests are correlated using `X-Request-ID` headers:
 | `AE_CACHE_SIZE` | `1000` | Maximum cache size |
 
 ## Development
+
+### Continuous Integration
+
+The project uses a **smoke-first CI strategy** to balance development velocity with quality:
+
+#### CI Jobs
+
+- **CI / test-api** (Required): Fast smoke tests (~30s) that gate all merges
+  - Tests core API endpoints (`/healthz`, `/readyz`, `/query`, `/debug/index`)
+  - Builds RFC index and uploads as artifact
+  - Must pass for any merge to main
+
+- **CI / ci-full** (Optional): Full test suite with comprehensive validation
+- **CI / eval** (Optional): Evaluation suite with golden test cases
+- **CI / perf** (Optional): Performance benchmarks and metrics
+
+#### Running Full CI
+
+**Option 1: Commit Flag**
+```bash
+git commit -m "feat: add new feature [full-ci]"
+```
+
+**Option 2: Manual Trigger**
+1. Go to **Actions** → **CI** workflow
+2. Click **Run workflow** button
+3. Select branch and run
+
+**Option 3: Scheduled**
+- Full CI runs automatically at 8:15 AM UTC daily
+
+#### Development Workflow
+
+1. **Push to feature branch** → Smoke test runs automatically
+2. **Open PR** → Only smoke test gates merge
+3. **Merge when green** → Fast feedback loop
+4. **Optional**: Add `[full-ci]` to commit for full validation
+
+This approach ensures rapid iteration while maintaining quality through the reliable smoke test gate.
 
 ### Project Structure
 
