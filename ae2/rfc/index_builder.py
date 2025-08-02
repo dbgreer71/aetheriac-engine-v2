@@ -23,12 +23,29 @@ ABSTRACT = re.compile(r"^\s*Abstract", re.IGNORECASE)
 COPYRIGHT = re.compile(r"^\s*Copyright", re.IGNORECASE)
 # Table rulers and headers
 TABLE_RULER = re.compile(r"^\s*[+\-]{3,}\s*$")
+# ALL-CAPS headings (common in older RFCs like 826)
+ALL_CAPS_HDR = re.compile(r"^[A-Z][A-Z0-9 \-/]{3,}$")
+
+CANONICAL_826 = {
+    "ADDRESS RESOLUTION PROTOCOL": "Address Resolution Protocol",
+    "INTRODUCTION": "Introduction",
+    "DISCUSSION": "Discussion",
+    "PACKET FORMAT": "Packet format",
+    "CONSIDERATIONS": "Considerations",
+}
 
 def clean_title(s: str) -> str:
     s = s.strip().strip('"').replace("\t", " ")
     s = TOC_DOTS.sub("", s).strip()
     s = re.sub(r"\s{2,}", " ", s)
     return s
+
+def _maybe_canonicalize(rfc_number: int, title: str) -> str:
+    if rfc_number == 826:
+        t = title.upper().strip()
+        if t in CANONICAL_826:
+            return CANONICAL_826[t]
+    return title
 
 def _hash_file(path: Path) -> str:
     h = hashlib.sha256()
@@ -43,59 +60,99 @@ def _sha256_bytes(b: bytes) -> str:
 
 def _parse_rfc_sections(text: str, rfc_number: int) -> List[Dict]:
     lines = text.splitlines()
-    idx = [i for i,l in enumerate(lines) if HEADER.match(l.strip())]
-    if not idx:
+    sections = []
+    current = {"section": None, "title": None, "lines": []}
+    pseudo_idx = 0
+    
+    for raw in lines:
+        line = raw.rstrip("\n")
+        
+        # Skip noise lines
+        if (ASCII_RULE.match(line) or PLUS_MINUS_RUN.match(line) or 
+            RULER_NUMS.match(line.strip()) or FIGURE_CAPTION.match(line) or
+            STATUS_MEMO.match(line) or ABSTRACT.match(line) or COPYRIGHT.match(line) or
+            TABLE_RULER.match(line) or not line.strip()):
+            continue
+            
+        # Check for numbered section headers
+        m = HEADER.match(line.strip())
+        if m:
+            # Flush previous section
+            if current["title"] and current["lines"]:
+                body = "\n".join(current["lines"]).strip()
+                if body:
+                    title = clean_title(_maybe_canonicalize(rfc_number, current["title"]))
+                    sections.append({
+                        "id": f"RFC{rfc_number}-{current['section']}",
+                        "rfc_number": rfc_number,
+                        "section": current["section"],
+                        "title": title,
+                        "url": f"https://www.rfc-editor.org/rfc/rfc{rfc_number}.txt",
+                        "text": body,
+                        "excerpt": (body or title)[:1000]
+                    })
+            # Start new numbered section
+            sec_id = m.group("num")
+            current = {"section": sec_id, "title": line, "lines": []}
+            continue
+            
+        # Check for ALL-CAPS headings (common in older RFCs like 826)
+        if ALL_CAPS_HDR.match(line) and len(line.split()) <= 8:
+            # Flush previous section
+            if current["title"] and current["lines"]:
+                body = "\n".join(current["lines"]).strip()
+                if body:
+                    title = clean_title(_maybe_canonicalize(rfc_number, current["title"]))
+                    sections.append({
+                        "id": f"RFC{rfc_number}-{current['section']}",
+                        "rfc_number": rfc_number,
+                        "section": current["section"],
+                        "title": title,
+                        "url": f"https://www.rfc-editor.org/rfc/rfc{rfc_number}.txt",
+                        "text": body,
+                        "excerpt": (body or title)[:1000]
+                    })
+            # Start new pseudo-numbered section
+            pseudo_idx += 1
+            title = _maybe_canonicalize(rfc_number, line)
+            current = {"section": str(pseudo_idx), "title": title, "lines": []}
+            continue
+            
+        # Body content
+        current["lines"].append(line)
+    
+    # Flush final section
+    if current["title"] and current["lines"]:
+        body = "\n".join(current["lines"]).strip()
+        if body:
+            sec = current["section"] or "0"
+            # If we never saw a numbered section but have a heading, treat as §1 (intro)
+            if sec == "0":
+                sec = "1"
+            title = clean_title(_maybe_canonicalize(rfc_number, current["title"]))
+            sections.append({
+                "id": f"RFC{rfc_number}-{sec}",
+                "rfc_number": rfc_number,
+                "section": sec,
+                "title": title,
+                "url": f"https://www.rfc-editor.org/rfc/rfc{rfc_number}.txt",
+                "text": body,
+                "excerpt": (body or title)[:1000]
+            })
+    
+    # Fallback if no sections found
+    if not sections:
         body = text.strip()
         return [{
             "id": f"RFC{rfc_number}",
             "rfc_number": rfc_number,
-            "section": "0",
+            "section": "1",
             "title": f"RFC {rfc_number}",
             "url": f"https://www.rfc-editor.org/rfc/rfc{rfc_number}.txt",
             "text": body,
             "excerpt": body[:1000]
         }]
-    idx.append(len(lines))
-    sections = []
-    for i in range(len(idx)-1):
-        start, end = idx[i], idx[i+1]
-        m = HEADER.match(lines[start].strip())
-        if not m: continue
-        sec = m.group("num")
-        raw_title = m.group("title").strip()
-        # Skip garbage headings like numeric "rulers"
-        if RULER_NUMS.match(raw_title):
-            continue
-        title = clean_title(raw_title)
-        
-        raw_body = "\n".join(lines[start+1:end])
-        # Drop ascii rulers/figures and collapse whitespace
-        cleaned_lines = []
-        for ln in raw_body.splitlines():
-            if ASCII_RULE.match(ln) or PLUS_MINUS_RUN.match(ln):
-                continue
-            if RULER_NUMS.match(ln.strip()):
-                continue
-            if FIGURE_CAPTION.match(ln):
-                continue
-            if STATUS_MEMO.match(ln) or ABSTRACT.match(ln) or COPYRIGHT.match(ln):
-                continue
-            if TABLE_RULER.match(ln):
-                continue
-            cleaned_lines.append(ln)
-        body = "\n".join(cleaned_lines).strip()
-        
-        if not title or not body:
-            continue
-        sections.append({
-            "id": f"RFC{rfc_number}-{sec}",
-            "rfc_number": rfc_number,
-            "section": sec,
-            "title": title,
-            "url": f"https://www.rfc-editor.org/rfc/rfc{rfc_number}.txt",
-            "text": body,
-            "excerpt": (body or title)[:1000]
-        })
+    
     return sections
 
 def build_index(output_dir: Path, raw_dir: Path = Path("data/rfc_raw")) -> dict:
