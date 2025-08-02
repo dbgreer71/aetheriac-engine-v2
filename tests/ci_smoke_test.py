@@ -64,27 +64,54 @@ def test_bgp_endpoint_smoke(app_client):
     """Test POST /troubleshoot/bgp-neighbor endpoint."""
     # Set environment to disable auth for testing
     import os
+
     os.environ["AE_DISABLE_AUTH"] = "true"
-    
+
     response = app_client.post(
-        "/troubleshoot/bgp-neighbor",
-        json={"vendor": "iosxe", "peer": "192.0.2.1"}
+        "/troubleshoot/bgp-neighbor", json={"vendor": "iosxe", "peer": "192.0.2.1"}
     )
     assert response.status_code == 200
     body = response.json()
     assert "steps" in body
     assert len(body["steps"]) >= 8  # BGP playbook should have 8 steps
+    assert "step_hash" in body  # Step hash should be present
+
+    # Test deterministic behavior - two consecutive calls should yield identical step_hash
+    response2 = app_client.post(
+        "/troubleshoot/bgp-neighbor", json={"vendor": "iosxe", "peer": "192.0.2.1"}
+    )
+    assert response2.status_code == 200
+    body2 = response2.json()
+    assert (
+        body["step_hash"] == body2["step_hash"]
+    ), "Step hash should be deterministic across runs"
+
+
+def test_debug_route_bgp(app_client):
+    """Test GET /debug/route with BGP query."""
+    # Set environment to disable auth for testing
+    import os
+
+    os.environ["AE_DISABLE_AUTH"] = "true"
+
+    response = app_client.get("/debug/route?query=iosxe bgp neighbor down")
+    assert response.status_code == 200
+    body = response.json()
+    assert "intent" in body
+    assert body["intent"] == "TROUBLESHOOT"
+    assert "target" in body
+    assert body["target"] == "bgp-neighbor-down"
 
 
 def test_auto_bgp_route_smoke(app_client):
     """Test POST /query?mode=auto with BGP query."""
     # Set environment to disable auth for testing
     import os
+
     os.environ["AE_DISABLE_AUTH"] = "true"
-    
+
     response = app_client.post(
-        "/query?mode=auto",
-        json={"query": "iosxe bgp neighbor down 192.0.2.1"}
+        "/query?mode=auto", json={"query": "iosxe bgp neighbor down 192.0.2.1"}
     )
     assert response.status_code == 200
     body = response.json()
@@ -92,3 +119,14 @@ def test_auto_bgp_route_smoke(app_client):
     assert body["intent"] == "TROUBLESHOOT"
     assert "steps" in body
     assert len(body["steps"]) >= 8  # Should route to BGP playbook with 8 steps
+    assert "step_hash" in body  # Step hash should be present
+
+    # Test deterministic behavior - two consecutive calls should yield identical step_hash
+    response2 = app_client.post(
+        "/query?mode=auto", json={"query": "iosxe bgp neighbor down 192.0.2.1"}
+    )
+    assert response2.status_code == 200
+    body2 = response2.json()
+    assert (
+        body["step_hash"] == body2["step_hash"]
+    ), "Step hash should be deterministic across runs"

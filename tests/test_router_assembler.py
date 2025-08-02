@@ -187,6 +187,18 @@ class TestTroubleshootingRouting:
         assert "steps" in data
         assert len(data["steps"]) >= 8  # BGP playbook has 8 steps
         assert data["mode"] == "auto"
+        assert "step_hash" in data  # Step hash should be present
+
+        # Test deterministic behavior - two consecutive calls should yield identical step_hash
+        response2 = client.post(
+            "/query?mode=auto",
+            json={"query": "iosxe bgp neighbor down 192.0.2.1"},
+        )
+        assert response2.status_code == 200
+        data2 = response2.json()
+        assert (
+            data["step_hash"] == data2["step_hash"]
+        ), "Step hash should be deterministic across runs"
 
 
 class TestDebugEndpoints:
