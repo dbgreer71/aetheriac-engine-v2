@@ -8,6 +8,7 @@ playbook engine and returning structured steps with citations.
 from typing import Dict, Any
 from ..playbooks.engine import run_playbook
 from ..playbooks.models import PlayContext
+from ..playbooks.utils import compute_steps_hash
 from ..retriever.index_store import IndexStore
 
 
@@ -63,6 +64,9 @@ def assemble_playbook(
             }
             steps_dict.append(step_dict)
 
+        # Compute deterministic step hash
+        step_hash = compute_steps_hash(result.steps)
+
         return {
             "steps": steps_dict,
             "citations": all_citations,
@@ -70,6 +74,7 @@ def assemble_playbook(
             "source_slug": target_slug,
             "vendor": play_context.vendor,
             "playbook_id": result.playbook_id,
+            "step_hash": step_hash,
         }
 
     except Exception as e:
@@ -98,6 +103,7 @@ def _create_play_context(query: str, context: Dict[str, Any] = None) -> PlayCont
     area = "0.0.0.0"
     auth = None
     mtu = 1500
+    peer = "192.0.2.1"  # Default BGP peer
 
     # Override with provided context
     if context:
@@ -106,6 +112,7 @@ def _create_play_context(query: str, context: Dict[str, Any] = None) -> PlayCont
         area = context.get("area", area)
         auth = context.get("auth", auth)
         mtu = context.get("mtu", mtu)
+        peer = context.get("peer", peer)
 
     # Extract from query if not provided
     query_lower = query.lower()
@@ -142,4 +149,14 @@ def _create_play_context(query: str, context: Dict[str, Any] = None) -> PlayCont
     if "mtu" in query_lower:
         mtu = 1500  # Default MTU
 
-    return PlayContext(vendor=vendor, iface=iface, area=area, auth=auth, mtu=mtu)
+    # Extract BGP peer IPv4 address from query
+    import re
+
+    ipv4_pattern = r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b"
+    ipv4_matches = re.findall(ipv4_pattern, query)
+    if ipv4_matches:
+        peer = ipv4_matches[0]  # Use first IPv4 address found
+
+    return PlayContext(
+        vendor=vendor, iface=iface, area=area, auth=auth, mtu=mtu, peer=peer
+    )

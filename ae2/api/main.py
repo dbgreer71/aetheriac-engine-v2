@@ -15,7 +15,6 @@ from ae2.concepts.errors import ConceptCompileError
 from ae2.playbooks.models import PlayContext
 from ae2.playbooks.engine import run_playbook, get_playbook_explanation
 from ae2.playbooks.bgp_neighbor_down import (
-    run_bgp_playbook,
     get_bgp_playbook_explanation,
 )
 from ae2.router.router import route
@@ -848,12 +847,27 @@ def troubleshoot_bgp_neighbor(
         raise HTTPException(status_code=500, detail="Index store not initialized")
 
     try:
-        result = run_bgp_playbook(ctx, store)
+        # Use assembler for consistent behavior and step hash
+        from ae2.assembler.playbook import assemble_playbook
+
+        # Create context dict from PlayContext
+        context = {
+            "vendor": ctx.vendor,
+            "iface": ctx.iface,
+            "area": ctx.area,
+            "auth": ctx.auth,
+            "mtu": ctx.mtu,
+            "peer": ctx.peer,
+        }
+
+        result = assemble_playbook("bgp-neighbor-down", "", store, context)
+
         return {
-            "playbook_id": result.playbook_id,
-            "steps": [step.model_dump() for step in result.steps],
+            "playbook_id": result.get("playbook_id", "bgp-neighbor-down"),
+            "steps": result.get("steps", []),
+            "step_hash": result.get("step_hash", ""),
             "debug": {
-                "matched_rules": len(result.steps),
+                "matched_rules": len(result.get("steps", [])),
                 "vendor": ctx.vendor,
                 "peer": ctx.peer,
                 "iface": ctx.iface,
