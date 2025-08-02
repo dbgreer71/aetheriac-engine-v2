@@ -40,5 +40,8 @@ EXPOSE 8001
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8001/healthz || exit 1
 
+# Copy serving script
+COPY scripts/serve.sh /app/scripts/serve.sh
+
 # Default command
-CMD ["python", "-m", "ae2.api.main"]
+CMD ["/app/scripts/serve.sh"]
