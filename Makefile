@@ -1,4 +1,4 @@
-.PHONY: demo eval-defs eval-concepts eval-trouble perf
+.PHONY: demo eval-defs eval-concepts eval-trouble perf dist
 
 demo:
 	AE_INDEX_DIR=$(PWD)/data/index ENABLE_DENSE=0 python -m ae2.eval.run --suite defs --dataset sample --json /tmp/defs.demo.json --repeats 1 --strict || true
@@ -34,3 +34,6 @@ ci-local:
 	./scripts/sync_rfc_min.sh && \
 	python scripts/build_index.py && \
 	pytest -q --maxfail=1 --disable-warnings -rA
+
+dist:
+	python -m build
