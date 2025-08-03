@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+pydantic>=2
+numpy
+scikit-learn
+scipy
+requests
+tqdm
+rank-bm25>=0.2.2
+jsonschema
+prometheus-client>=0.20
+
+[test]
+pytest
+httpx

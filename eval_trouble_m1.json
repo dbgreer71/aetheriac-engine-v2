@@ -1,0 +1,45 @@
+{
+  "suite": "trouble",
+  "dataset": "trouble.m1",
+  "ts": "2025-08-03T01:23:35.349932Z",
+  "counts": {
+    "total": 40,
+    "ok": 35
+  },
+  "metrics": {
+    "latency_ms": {
+      "p50": 0.0,
+      "p95": 0.001,
+      "p99": 0.001,
+      "avg": 0.0
+    },
+    "pass_min_steps": 0.0,
+    "deterministic": 1.0
+  },
+  "failures": [
+    {
+      "id": "T1",
+      "reason": "Missing required keywords: ['neighbor', 'interface']"
+    },
+    {
+      "id": "T5",
+      "reason": "Missing required keywords: ['interface', 'status']"
+    },
+    {
+      "id": "T6",
+      "reason": "Missing required keywords: ['interface', 'status']"
+    },
+    {
+      "id": "T31",
+      "reason": "Missing required keywords: ['2-way', 'dr', 'bdr']"
+    },
+    {
+      "id": "T32",
+      "reason": "Missing required keywords: ['dead timer', 'hello']"
+    }
+  ],
+  "hashes": {
+    "dataset_sha256": "d6f729856813e64d4e28752a50c5670ec1af069b2ddeb0cacd5d070ebcbf85e9",
+    "code_rev": "e6408c2"
+  }
+}

@@ -1,0 +1,30 @@
+[project]
+name = "ae2"
+version = "0.1.0"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi",
+  "uvicorn[standard]",
+  "pydantic>=2",
+  "numpy",
+  "scikit-learn",
+  "scipy",
+  "requests",
+  "tqdm",
+  "rank-bm25>=0.2.2",
+  "jsonschema",
+  "prometheus-client>=0.20"
+]
+[project.optional-dependencies]
+test = ["pytest","httpx"]
+
+[build-system]
+requires = ["setuptools>=68","wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+include = ["ae2*"]
+exclude = ["data*", "scripts*", "tests*", ".github*", "docs*"]

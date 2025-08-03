@@ -1,0 +1,117 @@
+{
+  "suite": "negatives",
+  "dataset": "m1",
+  "ts": "2025-08-02T20:18:29.141932",
+  "counts": {
+    "total": 39,
+    "ok": 16
+  },
+  "metrics": {
+    "abstain_accuracy": 0.41025641025641024,
+    "false_positive_rate": 0.5897435897435898,
+    "latency_ms": {
+      "p50": 0.01,
+      "p95": 0.016,
+      "p99": 0.099,
+      "avg": 0.011
+    }
+  },
+  "failures": [
+    {
+      "id": "A1",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A2",
+      "reason": "Expected ABSTAIN, got TROUBLESHOOT"
+    },
+    {
+      "id": "A3",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A4",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A5",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A6",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A7",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A8",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A9",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A10",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A11",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A12",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A13",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A14",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A15",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A16",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A17",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A18",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A19",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A20",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A37",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A38",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    },
+    {
+      "id": "A39",
+      "reason": "Expected ABSTAIN, got DEFINE"
+    }
+  ],
+  "hashes": {
+    "dataset_sha256": "eae1904677467c6335c74864425f62a8cec6d415607d654527a1d0722bce40a7",
+    "code_rev": "abdca21"
+  }
+}

@@ -1,0 +1,5 @@
+{"id":"T1","query":"iosxe g0/0 ospf neighbor down","ctx":{"vendor":"iosxe","iface":"GigabitEthernet0/0","area":"0.0.0.0"},"expected":{"min_steps":5,"must_include":["neighbor","interface"]}}
+{"id":"T2","query":"junos ge-0/0/0 ospf exstart","ctx":{"vendor":"junos","iface":"ge-0/0/0","area":"0.0.0.0"},"expected":{"must_include":["exstart"]}}
+{"id":"T3","query":"iosxe bgp neighbor down","ctx":{"vendor":"iosxe","neighbor":"192.168.1.1"},"expected":{"min_steps":4,"must_include":["bgp","neighbor"]}}
+{"id":"T4","query":"junos bgp session not established","ctx":{"vendor":"junos","neighbor":"10.0.0.1"},"expected":{"min_steps":4,"must_include":["bgp","session"]}}
+{"id":"T5","query":"iosxe interface g0/0 down","ctx":{"vendor":"iosxe","iface":"GigabitEthernet0/0"},"expected":{"min_steps":3,"must_include":["interface","status"]}}

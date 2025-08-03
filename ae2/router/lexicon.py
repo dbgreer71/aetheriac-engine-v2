@@ -73,7 +73,6 @@ OSPF_TERMS: Set[str] = {
 BGP_TERMS: Set[str] = {
     "bgp",
     "border gateway protocol",
-    "neighbor",
     "peer",
     "session",
     "route",

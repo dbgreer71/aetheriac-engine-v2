@@ -1,0 +1,33 @@
+{
+  "suite": "concepts",
+  "dataset": "concepts.sample",
+  "ts": "2025-08-02T14:09:47.723027Z",
+  "counts": {
+    "total": 5,
+    "ok": 3
+  },
+  "metrics": {
+    "latency_ms": {
+      "p50": 0.001,
+      "p95": 0.001,
+      "p99": 0.001,
+      "avg": 0.001
+    },
+    "faithfulness": 1.0,
+    "citation_validity": 1.0
+  },
+  "failures": [
+    {
+      "id": "C3",
+      "reason": "Missing required fields or insufficient claims"
+    },
+    {
+      "id": "C4",
+      "reason": "Missing required fields or insufficient claims"
+    }
+  ],
+  "hashes": {
+    "dataset_sha256": "9ac97107ef126a91cc1c01ebfc6dcd1281e210c9dfc66a1e61757120bd6a6c03",
+    "code_rev": "673fc5f"
+  }
+}

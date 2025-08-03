@@ -149,7 +149,7 @@ def _detect_protocol_candidates(
     # Extract features once
     features = _extract_protocol_features(query, vendor)
 
-    # BGP detection
+    # BGP detection - require explicit BGP terms
     bgp_terms_present = any(term in query_lower for term in BGP_TERMS)
     bgp_state_terms = any(
         term in query_lower
@@ -175,7 +175,7 @@ def _detect_protocol_candidates(
             )
             candidates.append(candidate)
 
-    # OSPF detection
+    # OSPF detection - require explicit OSPF terms
     ospf_terms_present = any(term in query_lower for term in OSPF_TERMS)
     ospf_state_terms = any(
         term in query_lower
