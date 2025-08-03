@@ -1,0 +1,20 @@
+{"id":"CN1","query":"weather in paris","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}
+{"id":"CN2","query":"recipe for chocolate cake","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}
+{"id":"CN3","query":"movie reviews","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}
+{"id":"CN4","query":"stock market prices","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}
+{"id":"CN5","query":"cooking instructions","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}
+{"id":"CN6","query":"travel destinations","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}
+{"id":"CN7","query":"music recommendations","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}
+{"id":"CN8","query":"book reviews","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}
+{"id":"CN9","query":"sports scores","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}
+{"id":"CN10","query":"restaurant reviews","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}
+{"id":"CN11","query":"shopping deals","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}
+{"id":"CN12","query":"health advice","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}
+{"id":"CN13","query":"fitness tips","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}
+{"id":"CN14","query":"gardening tips","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}
+{"id":"CN15","query":"pet care advice","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}
+{"id":"CN16","query":"home improvement","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}
+{"id":"CN17","query":"car maintenance","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}
+{"id":"CN18","query":"fashion trends","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}
+{"id":"CN19","query":"beauty tips","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}
+{"id":"CN20","query":"parenting advice","expected":{"intent":"ABSTAIN","reason":"OFFTOPIC"}}

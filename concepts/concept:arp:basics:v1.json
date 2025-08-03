@@ -1,0 +1,49 @@
+{
+  "id": "concept:arp:basics:v1",
+  "definition": "Address Resolution Protocol (ARP) is a communication protocol used for discovering the link layer address associated with a given internet layer address.",
+  "claims": [
+    {
+      "claim": "ARP maps IP addresses to MAC addresses on local networks",
+      "evidence_refs": ["d4e5f6789012345678901234567890abcdef1234567890abcdef1234567890abcde"],
+      "confidence": 0.95
+    },
+    {
+      "claim": "ARP uses broadcast messages to discover unknown MAC addresses",
+      "evidence_refs": ["e5f6789012345678901234567890abcdef1234567890abcdef1234567890abcdef"],
+      "confidence": 0.90
+    },
+    {
+      "claim": "ARP cache stores IP-to-MAC mappings to avoid repeated broadcasts",
+      "evidence_refs": ["f6789012345678901234567890abcdef1234567890abcdef1234567890abcdef123"],
+      "confidence": 0.85
+    }
+  ],
+  "evidence": {
+    "d4e5f6789012345678901234567890abcdef1234567890abcdef1234567890abcde": {
+      "sha256": "d4e5f6789012345678901234567890abcdef1234567890abcdef1234567890abcde",
+      "length": 160,
+      "source": "RFC 826",
+      "content": "ARP is used to dynamically build and maintain a mapping table between IP addresses and Ethernet addresses."
+    },
+    "e5f6789012345678901234567890abcdef1234567890abcdef1234567890abcdef": {
+      "sha256": "e5f6789012345678901234567890abcdef1234567890abcdef1234567890abcdef",
+      "length": 170,
+      "source": "RFC 826",
+      "content": "ARP uses broadcast messages to discover the Ethernet address of a target IP address."
+    },
+    "f6789012345678901234567890abcdef1234567890abcdef1234567890abcdef123": {
+      "sha256": "f6789012345678901234567890abcdef1234567890abcdef1234567890abcdef123",
+      "length": 155,
+      "source": "RFC 826",
+      "content": "ARP maintains a cache of recent IP-to-Ethernet address mappings to avoid repeated broadcasts."
+    }
+  },
+  "provenance": {
+    "index_root": "/data/index",
+    "build_time": "2024-01-15T10:35:00Z",
+    "compiler_version": "1.0.0",
+    "evidence_count": 3
+  },
+  "tags": ["arp", "networking", "protocol", "mac", "address-resolution"],
+  "approved": true
+}

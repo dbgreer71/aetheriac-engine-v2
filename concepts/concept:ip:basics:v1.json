@@ -1,0 +1,49 @@
+{
+  "id": "concept:ip:basics:v1",
+  "definition": "Internet Protocol (IP) is the principal communications protocol in the Internet protocol suite for relaying datagrams across network boundaries.",
+  "claims": [
+    {
+      "claim": "IP provides connectionless, unreliable packet delivery service",
+      "evidence_refs": ["a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef1234567890"],
+      "confidence": 0.95
+    },
+    {
+      "claim": "IPv4 uses 32-bit addresses while IPv6 uses 128-bit addresses",
+      "evidence_refs": ["b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef1234567890ab"],
+      "confidence": 0.90
+    },
+    {
+      "claim": "IP operates at the network layer (Layer 3) of the OSI model",
+      "evidence_refs": ["c3d4e5f6789012345678901234567890abcdef1234567890abcdef1234567890abcd"],
+      "confidence": 0.85
+    }
+  ],
+  "evidence": {
+    "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef1234567890": {
+      "sha256": "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef1234567890",
+      "length": 150,
+      "source": "RFC 791",
+      "content": "The Internet Protocol is designed for use in interconnected systems of packet-switched computer communication networks."
+    },
+    "b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef1234567890ab": {
+      "sha256": "b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef1234567890ab",
+      "length": 200,
+      "source": "RFC 791",
+      "content": "IPv4 addresses are 32 bits long and are typically written as four octets separated by dots."
+    },
+    "c3d4e5f6789012345678901234567890abcdef1234567890abcdef1234567890abcd": {
+      "sha256": "c3d4e5f6789012345678901234567890abcdef1234567890abcdef1234567890abcd",
+      "length": 180,
+      "source": "RFC 791",
+      "content": "The Internet Protocol is the network layer protocol in the Internet protocol suite."
+    }
+  },
+  "provenance": {
+    "index_root": "/data/index",
+    "build_time": "2024-01-15T10:30:00Z",
+    "compiler_version": "1.0.0",
+    "evidence_count": 3
+  },
+  "tags": ["ip", "networking", "protocol", "basics"],
+  "approved": true
+}

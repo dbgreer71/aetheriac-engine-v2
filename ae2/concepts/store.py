@@ -116,6 +116,7 @@ class ConceptStore:
             "sha256": card_sha256,
             "bytes": len(card_json.encode("utf-8")),
             "built_at": card.provenance.built_at.isoformat(timespec="seconds"),
+            "approved": card.approved,
         }
 
         # Remove existing entry if it exists

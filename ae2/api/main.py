@@ -453,9 +453,16 @@ def delete_concept(slug: str):
 @app.get("/concepts/schema")
 def get_concept_schema():
     """Get JSON schema for concept cards."""
-    from ae2.concepts.models import ConceptCard
+    import json
+    from pathlib import Path
 
-    return ConceptCard.model_json_schema()
+    schema_path = Path(__file__).parent.parent / "concepts" / "schema_v1.json"
+    if schema_path.exists():
+        with open(schema_path, "r") as f:
+            schema = json.load(f)
+        return schema
+    else:
+        raise HTTPException(status_code=404, detail="Schema file not found")
 
 
 @app.get("/concepts/validate/{slug}")

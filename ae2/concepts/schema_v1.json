@@ -1,0 +1,118 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Concept Card v1.0 Schema",
+  "description": "Schema for Concept Cards with evidence-based claims and provenance tracking",
+  "type": "object",
+  "required": ["id", "definition", "claims", "evidence", "provenance"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique concept identifier in format concept:slug:v1",
+      "pattern": "^concept:[a-zA-Z0-9_-]+:v1$"
+    },
+    "definition": {
+      "type": "string",
+      "description": "Core definition of the concept",
+      "minLength": 10
+    },
+    "claims": {
+      "type": "array",
+      "description": "Evidence-based claims about the concept",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["claim", "evidence_refs"],
+        "properties": {
+          "claim": {
+            "type": "string",
+            "description": "Specific claim about the concept"
+          },
+          "evidence_refs": {
+            "type": "array",
+            "description": "References to evidence supporting this claim",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0.0,
+            "maximum": 1.0,
+            "description": "Confidence score for this claim"
+          }
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "description": "Evidence collection supporting claims",
+      "patternProperties": {
+        "^[a-f0-9]{64}$": {
+          "type": "object",
+          "required": ["sha256", "length", "source"],
+          "properties": {
+            "sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$",
+              "description": "SHA256 hash of evidence content"
+            },
+            "length": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Length of evidence content in bytes"
+            },
+            "source": {
+              "type": "string",
+              "description": "Source identifier (e.g., RFC number, document title)"
+            },
+            "content": {
+              "type": "string",
+              "description": "Evidence content (optional, may be stored separately)"
+            },
+            "metadata": {
+              "type": "object",
+              "description": "Additional metadata about the evidence"
+            }
+          }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["index_root", "build_time"],
+      "properties": {
+        "index_root": {
+          "type": "string",
+          "description": "Path to index root used for evidence collection"
+        },
+        "build_time": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp when concept was built"
+        },
+        "compiler_version": {
+          "type": "string",
+          "description": "Version of concept compiler used"
+        },
+        "evidence_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of evidence pieces collected"
+        }
+      }
+    },
+    "tags": {
+      "type": "array",
+      "description": "Tags for categorizing the concept",
+      "items": {
+        "type": "string"
+      }
+    },
+    "approved": {
+      "type": "boolean",
+      "description": "Whether this concept has been approved for use",
+      "default": false
+    }
+  }
+}
