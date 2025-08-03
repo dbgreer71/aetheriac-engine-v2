@@ -13,6 +13,7 @@ from .lexicon import (
     find_canonical_rfc,
     find_playbook_slug,
     get_confidence_score,
+    OSPF_TERMS,
 )
 
 # Import cache if available
@@ -65,6 +66,100 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
 
     # Check for troubleshooting intent first (highest priority)
     is_troubleshoot, troubleshoot_matches, vendor = extract_troubleshoot_terms(query)
+
+    # Special handling for OSPF neighbor-down queries - prefer TROUBLESHOOT
+    ospf_terms_present = any(term in query_lower for term in OSPF_TERMS)
+    ospf_state_terms_present = any(
+        term in query_lower
+        for term in [
+            "down",
+            "not full",
+            "stuck",
+            "2-way",
+            "init",
+            "exstart",
+            "loading",
+            "dead",
+        ]
+    )
+
+    if ospf_terms_present and ospf_state_terms_present:
+        playbook_slug, playbook_matches = find_playbook_slug(query)
+        all_matches = troubleshoot_matches + playbook_matches + ["ospf"]
+        reasons = ["ospf+state_terms"]
+
+        # Validate vendor for troubleshooting
+        allowed_vendors = ["iosxe", "junos"]  # TODO: make configurable
+
+        # Normalize vendor name
+        if vendor == "ios" or vendor == "cisco":
+            vendor = "iosxe"
+
+        if vendor and vendor not in allowed_vendors:
+            return _cache_and_return(
+                RouteDecision(
+                    intent="DEFINE",
+                    target="2328",  # Default to OSPF RFC
+                    confidence=0.3,
+                    matches=all_matches,
+                    notes=f"OSPF troubleshooting requested but vendor '{vendor}' not supported. Supported: {allowed_vendors}",
+                    mode_used="hybrid",
+                )
+            )
+
+        if vendor:
+            reasons.append(f"vendor:{vendor}")
+
+        return _cache_and_return(
+            RouteDecision(
+                intent="TROUBLESHOOT",
+                target="ospf-neighbor-down",
+                confidence=get_confidence_score(all_matches, "TROUBLESHOOT"),
+                matches=all_matches,
+                notes=f"OSPF troubleshooting detected for ospf-neighbor-down on {vendor if vendor else 'unknown vendor'}. Reasons: {', '.join(reasons)}",
+                mode_used="hybrid",
+            )
+        )
+
+    # Additional OSPF detection: vendor present and ospf present
+    vendor_present = vendor is not None
+    if vendor_present and "ospf" in query_lower:
+        playbook_slug, playbook_matches = find_playbook_slug(query)
+        all_matches = troubleshoot_matches + playbook_matches + ["ospf", vendor]
+        reasons = ["ospf+vendor"]
+
+        # Validate vendor for troubleshooting
+        allowed_vendors = ["iosxe", "junos"]  # TODO: make configurable
+
+        # Normalize vendor name
+        if vendor == "ios" or vendor == "cisco":
+            vendor = "iosxe"
+
+        if vendor not in allowed_vendors:
+            return _cache_and_return(
+                RouteDecision(
+                    intent="DEFINE",
+                    target="2328",  # Default to OSPF RFC
+                    confidence=0.3,
+                    matches=all_matches,
+                    notes=f"OSPF troubleshooting requested but vendor '{vendor}' not supported. Supported: {allowed_vendors}",
+                    mode_used="hybrid",
+                )
+            )
+
+        reasons.append(f"vendor:{vendor}")
+
+        return _cache_and_return(
+            RouteDecision(
+                intent="TROUBLESHOOT",
+                target="ospf-neighbor-down",
+                confidence=get_confidence_score(all_matches, "TROUBLESHOOT"),
+                matches=all_matches,
+                notes=f"OSPF troubleshooting detected for ospf-neighbor-down on {vendor}. Reasons: {', '.join(reasons)}",
+                mode_used="hybrid",
+            )
+        )
+
     if is_troubleshoot:
         playbook_slug, playbook_matches = find_playbook_slug(query)
         all_matches = troubleshoot_matches + playbook_matches

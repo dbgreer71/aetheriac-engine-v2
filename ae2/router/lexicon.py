@@ -49,6 +49,26 @@ PROTOCOL_KEYWORDS: Set[str] = {
     "ip",
 }
 
+# OSPF-specific terms for neighbor issue detection
+OSPF_TERMS: Set[str] = {
+    "ospf",
+    "ospfv2",
+    "ospfv3",
+    "lsa",
+    "hello",
+    "dead timer",
+    "dr",
+    "bdr",
+    "neighbor",
+    "adjacency",
+    "area",
+    "designated router",
+    "full",
+    "2-way",
+    "exstart",
+    "loading",
+}
+
 # Vendor keywords for troubleshooting
 VENDOR_KEYWORDS: Set[str] = {
     "iosxe",
@@ -82,6 +102,7 @@ CANONICAL_RFC_MAP: Dict[str, int] = {
 
 # Playbook slug mappings for troubleshooting
 PLAYBOOK_SLUG_MAP: Dict[str, str] = {
+    "ospf": "ospf-neighbor-down",
     "ospf neighbor": "ospf-neighbor-down",
     "ospf neighbor down": "ospf-neighbor-down",
     "ospf stuck": "ospf-neighbor-down",

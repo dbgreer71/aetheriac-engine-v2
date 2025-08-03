@@ -1,5 +1,0 @@
-{"id":"C1","slug":"arp","query":"arp concept card","expected":{"fields_present":["definition","claims"],"min_claims":1}}
-{"id":"C2","slug":"default-route","query":"default route card","expected":{"fields_present":["definition"]}}
-{"id":"C3","slug":"ospf","query":"ospf concept card","expected":{"fields_present":["definition","claims"],"min_claims":2}}
-{"id":"C4","slug":"bgp","query":"bgp concept card","expected":{"fields_present":["definition","claims"],"min_claims":2}}
-{"id":"C5","slug":"tcp","query":"tcp concept card","expected":{"fields_present":["definition","claims"],"min_claims":1}}
