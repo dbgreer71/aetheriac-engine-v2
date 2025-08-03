@@ -1,0 +1,60 @@
+{"id":"D1","query":"what is ospf","expected":{"intent":"DEFINE","target_rfc":2328,"accept_sections_prefix":["1","1.1"]}}
+{"id":"D2","query":"tcp overview","expected":{"intent":"DEFINE","target_rfc":9293}}
+{"id":"D3","query":"what is arp","expected":{"intent":"DEFINE","target_rfc":826}}
+{"id":"D4","query":"what is bgp","expected":{"intent":"DEFINE","target_rfc":4271}}
+{"id":"D5","query":"ipv6 header","expected":{"intent":"DEFINE","target_rfc":8200}}
+{"id":"D6","query":"define ip","expected":{"intent":"DEFINE","target_rfc":791}}
+{"id":"D7","query":"icmp protocol","expected":{"intent":"DEFINE","target_rfc":792}}
+{"id":"D8","query":"dns explanation","expected":{"intent":"DEFINE","target_rfc":1034}}
+{"id":"D9","query":"dhcp protocol","expected":{"intent":"DEFINE","target_rfc":2131}}
+{"id":"D10","query":"vlan definition","expected":{"intent":"DEFINE","target_rfc":8021}}
+{"id":"D11","query":"stp protocol","expected":{"intent":"DEFINE","target_rfc":8021}}
+{"id":"D12","query":"rstp explanation","expected":{"intent":"DEFINE","target_rfc":8021}}
+{"id":"D13","query":"mstp protocol","expected":{"intent":"DEFINE","target_rfc":8021}}
+{"id":"D14","query":"private addressing","expected":{"intent":"DEFINE","target_rfc":1918}}
+{"id":"D15","query":"router requirements","expected":{"intent":"DEFINE","target_rfc":1812}}
+{"id":"D16","query":"ipv6 protocol","expected":{"intent":"DEFINE","target_rfc":8200}}
+{"id":"D17","query":"icmpv6 protocol","expected":{"intent":"DEFINE","target_rfc":4443}}
+{"id":"D18","query":"ndp protocol","expected":{"intent":"DEFINE","target_rfc":4861}}
+{"id":"D19","query":"slaac protocol","expected":{"intent":"DEFINE","target_rfc":4862}}
+{"id":"D20","query":"dhcpv6 protocol","expected":{"intent":"DEFINE","target_rfc":3315}}
+{"id":"D21","query":"ospfv3 protocol","expected":{"intent":"DEFINE","target_rfc":5340}}
+{"id":"D22","query":"isis protocol","expected":{"intent":"DEFINE","target_rfc":1195}}
+{"id":"D23","query":"eigrp protocol","expected":{"intent":"DEFINE","target_rfc":7868}}
+{"id":"D24","query":"rip protocol","expected":{"intent":"DEFINE","target_rfc":2453}}
+{"id":"D25","query":"ripv2 protocol","expected":{"intent":"DEFINE","target_rfc":2453}}
+{"id":"D26","query":"ospf areas","expected":{"intent":"DEFINE","target_rfc":2328}}
+{"id":"D27","query":"ospf authentication","expected":{"intent":"DEFINE","target_rfc":2328}}
+{"id":"D28","query":"ospf network types","expected":{"intent":"DEFINE","target_rfc":2328}}
+{"id":"D29","query":"ospf lsa types","expected":{"intent":"DEFINE","target_rfc":2328}}
+{"id":"D30","query":"ospf hello protocol","expected":{"intent":"DEFINE","target_rfc":2328}}
+{"id":"D31","query":"bgp path attributes","expected":{"intent":"DEFINE","target_rfc":4271}}
+{"id":"D32","query":"bgp communities","expected":{"intent":"DEFINE","target_rfc":1997}}
+{"id":"D33","query":"bgp route reflection","expected":{"intent":"DEFINE","target_rfc":4456}}
+{"id":"D34","query":"bgp confederation","expected":{"intent":"DEFINE","target_rfc":5065}}
+{"id":"D35","query":"bgp multiprotocol","expected":{"intent":"DEFINE","target_rfc":4760}}
+{"id":"D36","query":"bgp route selection","expected":{"intent":"DEFINE","target_rfc":4271}}
+{"id":"D37","query":"bgp timers","expected":{"intent":"DEFINE","target_rfc":4271}}
+{"id":"D38","query":"bgp authentication","expected":{"intent":"DEFINE","target_rfc":2385}}
+{"id":"D39","query":"bgp gtsm","expected":{"intent":"DEFINE","target_rfc":5082}}
+{"id":"D40","query":"bgp graceful restart","expected":{"intent":"DEFINE","target_rfc":4724}}
+{"id":"D41","query":"bgp route dampening","expected":{"intent":"DEFINE","target_rfc":2439}}
+{"id":"D42","query":"bgp as path prepending","expected":{"intent":"DEFINE","target_rfc":4271}}
+{"id":"D43","query":"bgp local preference","expected":{"intent":"DEFINE","target_rfc":4271}}
+{"id":"D44","query":"bgp med attribute","expected":{"intent":"DEFINE","target_rfc":4271}}
+{"id":"D45","query":"bgp origin attribute","expected":{"intent":"DEFINE","target_rfc":4271}}
+{"id":"D46","query":"bgp next hop attribute","expected":{"intent":"DEFINE","target_rfc":4271}}
+{"id":"D47","query":"bgp aggregator attribute","expected":{"intent":"DEFINE","target_rfc":4271}}
+{"id":"D48","query":"bgp atomic aggregate","expected":{"intent":"DEFINE","target_rfc":4271}}
+{"id":"D49","query":"bgp cluster list","expected":{"intent":"DEFINE","target_rfc":4456}}
+{"id":"D50","query":"bgp originator id","expected":{"intent":"DEFINE","target_rfc":4456}}
+{"id":"D51","query":"bgp extended communities","expected":{"intent":"DEFINE","target_rfc":4360}}
+{"id":"D52","query":"bgp large communities","expected":{"intent":"DEFINE","target_rfc":8092}}
+{"id":"D53","query":"bgp flow spec","expected":{"intent":"DEFINE","target_rfc":5575}}
+{"id":"D54","query":"bgp link state","expected":{"intent":"DEFINE","target_rfc":7752}}
+{"id":"D55","query":"bgp evpn","expected":{"intent":"DEFINE","target_rfc":7432}}
+{"id":"D56","query":"bgp vpls","expected":{"intent":"DEFINE","target_rfc":4761}}
+{"id":"D57","query":"bgp mpls vpn","expected":{"intent":"DEFINE","target_rfc":4364}}
+{"id":"D58","query":"bgp mpls te","expected":{"intent":"DEFINE","target_rfc":7752}}
+{"id":"D59","query":"bgp srv6","expected":{"intent":"DEFINE","target_rfc":9256}}
+{"id":"D60","query":"bgp segment routing","expected":{"intent":"DEFINE","target_rfc":8669}}

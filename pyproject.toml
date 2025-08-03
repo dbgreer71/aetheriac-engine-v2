@@ -11,7 +11,12 @@ dependencies = [
   "scipy",
   "requests",
   "tqdm",
-  "rank-bm25>=0.2.2"
+  "rank-bm25>=0.2.2",
+  "jsonschema",
+  "prometheus-client>=0.20",
+  "PyJWT>=2.8.0",
+  "cryptography>=41.0.0",
+  "python-multipart>=0.0.6"
 ]
 [project.optional-dependencies]
 test = ["pytest","httpx"]

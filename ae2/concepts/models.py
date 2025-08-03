@@ -6,7 +6,7 @@ structured knowledge about network concepts with evidence and provenance.
 """
 
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -17,6 +17,12 @@ class Evidence(BaseModel):
     type: str = Field(description="Type of evidence: 'rfc' or 'artifact'")
     url_or_path: str = Field(description="URL or file path to the evidence")
     sha256: str = Field(description="SHA256 hash of the evidence content")
+    length: Optional[int] = Field(
+        default=None, description="Length of the evidence excerpt"
+    )
+    source: Optional[dict] = Field(
+        default=None, description="Source metadata for the evidence"
+    )
 
 
 class Claim(BaseModel):
@@ -41,6 +47,9 @@ class Provenance(BaseModel):
     """Provenance information for a concept card."""
 
     built_at: datetime = Field(description="When the card was built")
+    index_root_hash: Optional[str] = Field(
+        default=None, description="Root hash of the index used to compile this card"
+    )
 
 
 class ConceptCard(BaseModel):
@@ -52,3 +61,10 @@ class ConceptCard(BaseModel):
         default_factory=list, description="Claims about the concept"
     )
     provenance: Provenance = Field(description="Provenance information")
+    related: List[str] = Field(
+        default_factory=list,
+        description="Slugs of related concepts this card references",
+    )
+    tags: List[str] = Field(
+        default_factory=list, description="Free-form lowercase tags for categorization"
+    )

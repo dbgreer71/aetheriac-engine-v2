@@ -1,0 +1,8 @@
+{"id":"D1","query":"what is ospf","expected":{"intent":"DEFINE","target_rfc":2328,"accept_sections_prefix":["1","1.1"]}}
+{"id":"D2","query":"tcp overview","expected":{"intent":"DEFINE","target_rfc":9293}}
+{"id":"D3","query":"what is arp","expected":{"intent":"DEFINE","target_rfc":826}}
+{"id":"D4","query":"what is bgp","expected":{"intent":"DEFINE","target_rfc":4271}}
+{"id":"D5","query":"ipv6 header","expected":{"intent":"DEFINE","target_rfc":8200}}
+{"id":"D6","query":"define ip","expected":{"intent":"DEFINE","target_rfc":791}}
+{"id":"D7","query":"icmp protocol","expected":{"intent":"DEFINE","target_rfc":792}}
+{"id":"D8","query":"dns explanation","expected":{"intent":"DEFINE","target_rfc":1034}}
