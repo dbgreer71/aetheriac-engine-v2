@@ -5,7 +5,8 @@ This module provides deterministic routing logic to choose between
 definition, concept, or troubleshooting paths based on query analysis.
 """
 
-from typing import Dict, List, Any, Optional
+import re
+from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass
 from .lexicon import (
     extract_troubleshoot_terms,
@@ -15,6 +16,8 @@ from .lexicon import (
     OSPF_TERMS,
     BGP_TERMS,
     TCP_TERMS,
+    VENDOR_HINTS,
+    IF_CANON,
 )
 
 # Import cache if available
@@ -24,6 +27,40 @@ try:
     CACHE_AVAILABLE = True
 except ImportError:
     CACHE_AVAILABLE = False
+
+
+def normalize_query(q: str) -> Tuple[str, Dict[str, Any]]:
+    """Normalize query for consistent tokenization."""
+    raw = q or ""
+    s = " ".join(raw.strip().split()).lower()
+    # area normalization
+    s = re.sub(r"\barea\s+0\b", "area 0.0.0.0", s)
+    # interface canonicalization (cheap pass)
+    for pat, repl in IF_CANON.items():
+        s = re.sub(pat, repl, s)
+    return s, {"original": raw}
+
+
+def infer_vendor(s: str) -> Tuple[Optional[str], Dict[str, Any]]:
+    """Infer vendor from query tokens and interface prefixes."""
+    evid = {"hits": [], "if_hits": []}
+    for v, spec in VENDOR_HINTS.items():
+        if any(tok in s for tok in spec["tokens"]):
+            evid["hits"].append(v)
+        # interface prefix hints
+        if any(re.search(r"\b" + re.escape(pref), s) for pref in spec["if_prefixes"]):
+            evid["if_hits"].append(v)
+    # majority vote, tiebreak lexicographically for stability
+    candidates = evid["hits"] + evid["if_hits"]
+    if not candidates:
+        return None, evid
+    counts = {}
+    for c in candidates:
+        counts[c] = counts.get(c, 0) + 1
+    best = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[0][0]
+    evid["winner"] = best
+    evid["counts"] = counts
+    return best, evid
 
 
 @dataclass(frozen=True)
@@ -118,6 +155,7 @@ class RouteDecision:
     matches: List[str]  # Matched terms/keywords
     notes: Any  # Additional context (can be dict or str)
     mode_used: str  # "hybrid", "tfidf", "bm25"
+    reason_code: Optional[str] = None  # ABSTAIN reason code
 
 
 def _extract_protocol_features(query: str, vendor: Optional[str]) -> Dict[str, Any]:
@@ -325,11 +363,21 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
             cache_set(cache_key, decision)
         return decision
 
+    # Normalize query and infer vendor
+    normalized, norm_meta = normalize_query(query)
+    vendor_guess, vend_meta = infer_vendor(normalized)
+
     # Check for troubleshooting intent first (highest priority)
-    is_troubleshoot, troubleshoot_matches, vendor = extract_troubleshoot_terms(query)
+    is_troubleshoot, troubleshoot_matches, vendor = extract_troubleshoot_terms(
+        normalized
+    )
 
     # Multi-protocol ranking for troubleshooting
     if is_troubleshoot:
+        # Use inferred vendor if no explicit vendor provided
+        if not vendor and vendor_guess:
+            vendor = vendor_guess
+
         # Normalize vendor name
         if vendor == "ios" or vendor == "cisco":
             vendor = "iosxe"
@@ -339,17 +387,22 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
         if vendor and vendor not in allowed_vendors:
             return _cache_and_return(
                 RouteDecision(
-                    intent="DEFINE",
-                    target="2328",  # Default to OSPF RFC
+                    intent="ABSTAIN",
+                    target="",
                     confidence=0.3,
                     matches=troubleshoot_matches,
-                    notes=f"Troubleshooting requested but vendor '{vendor}' not supported. Supported: {allowed_vendors}",
+                    notes={
+                        "normalized": norm_meta.get("original"),
+                        "vendor_inference": vend_meta,
+                        "reason": f"Vendor '{vendor}' not supported. Supported: {allowed_vendors}",
+                    },
                     mode_used="hybrid",
+                    reason_code="UNSUPPORTED_VENDOR",
                 )
             )
 
         # Build tokens, rules, and tiebreak for each protocol path
-        query_lower = query.lower()
+        query_lower = normalized
         candidates = []
 
         # BGP path
@@ -545,6 +598,8 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
 
             # Store evidence in notes
             notes_data = {
+                "normalized": norm_meta.get("original"),
+                "vendor_inference": vend_meta,
                 "ranked_reasons": winner_reasons,
                 "matches": winner_tokens,
                 "rules": winner_rules,
@@ -569,6 +624,7 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
                             "min": MIN_CONFIDENCE_ROUTE,
                         },
                         mode_used="hybrid",
+                        reason_code="LOW_CONFIDENCE",
                     )
                 )
 
@@ -589,13 +645,73 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
                     target="",
                     confidence=0.1,
                     matches=troubleshoot_matches,
-                    notes=f"No protocol candidates found. Query: {query}",
+                    notes={
+                        "normalized": norm_meta.get("original"),
+                        "vendor_inference": vend_meta,
+                        "reason": f"No protocol candidates found. Query: {query}",
+                    },
                     mode_used="hybrid",
+                    reason_code="MISSING_EVIDENCE",
                 )
             )
 
+    # Check for off-topic or ambiguous queries
+    query_tokens = normalized.split()
+    if len(query_tokens) <= SHORT_QUERY_TOKEN_MAX:
+        # Check if it's a short but valid query (vendor + protocol)
+        has_vendor = any(
+            v in normalized for v in ["iosxe", "junos", "cisco", "juniper"]
+        )
+        has_protocol = any(p in normalized for p in ["bgp", "ospf", "tcp"])
+        if not (has_vendor and has_protocol):
+            return _cache_and_return(
+                RouteDecision(
+                    intent="ABSTAIN",
+                    target="",
+                    confidence=0.1,
+                    matches=[],
+                    notes={
+                        "normalized": norm_meta.get("original"),
+                        "vendor_inference": vend_meta,
+                        "reason": f"Query too short ({len(query_tokens)} tokens)",
+                    },
+                    mode_used="hybrid",
+                    reason_code="SHORT_QUERY",
+                )
+            )
+
+    # Check for off-topic queries (no networking terms)
+    networking_terms = [
+        "bgp",
+        "ospf",
+        "tcp",
+        "ip",
+        "neighbor",
+        "router",
+        "switch",
+        "interface",
+        "port",
+    ]
+    has_networking = any(term in normalized for term in networking_terms)
+    if not has_networking:
+        return _cache_and_return(
+            RouteDecision(
+                intent="ABSTAIN",
+                target="",
+                confidence=0.1,
+                matches=[],
+                notes={
+                    "normalized": norm_meta.get("original"),
+                    "vendor_inference": vend_meta,
+                    "reason": "No networking terms detected",
+                },
+                mode_used="hybrid",
+                reason_code="OFFTOPIC",
+            )
+        )
+
     # Check for concept intent
-    is_concept, concept_matches = extract_concept_terms(query)
+    is_concept, concept_matches = extract_concept_terms(normalized)
     if is_concept:
         # Try to find concept slug from query
         concept_store = stores.get("concept_store")
@@ -603,7 +719,7 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
             # Extract potential concept name from query
             potential_concepts = ["arp", "ospf", "bgp", "tcp", "ip", "default route"]
             for concept in potential_concepts:
-                if concept in query.lower():
+                if concept in normalized:
                     # Check if concept card exists
                     try:
                         concept_store.load(f"concept:{concept}:v1")
@@ -615,7 +731,11 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
                                     concept_matches + [concept], "CONCEPT"
                                 ),
                                 matches=concept_matches + [concept],
-                                notes=f"Concept card found for {concept}",
+                                notes={
+                                    "normalized": norm_meta.get("original"),
+                                    "vendor_inference": vend_meta,
+                                    "reason": f"Concept card found for {concept}",
+                                },
                                 mode_used="hybrid",
                             )
                         )
@@ -624,27 +744,35 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
                         pass
 
         # If no concept card found, fall back to definition
-        rfc_num, rfc_matches = find_canonical_rfc(query)
+        rfc_num, rfc_matches = find_canonical_rfc(normalized)
         return _cache_and_return(
             RouteDecision(
                 intent="DEFINE",
                 target=str(rfc_num),
                 confidence=0.4,  # Lower confidence due to fallback
                 matches=concept_matches + rfc_matches,
-                notes="Concept requested but card not found, falling back to definition",
+                notes={
+                    "normalized": norm_meta.get("original"),
+                    "vendor_inference": vend_meta,
+                    "reason": "Concept requested but card not found, falling back to definition",
+                },
                 mode_used="hybrid",
             )
         )
 
     # Default to definition intent
-    rfc_num, rfc_matches = find_canonical_rfc(query)
+    rfc_num, rfc_matches = find_canonical_rfc(normalized)
     return _cache_and_return(
         RouteDecision(
             intent="DEFINE",
             target=str(rfc_num),
             confidence=get_confidence_score(rfc_matches, "DEFINE"),
             matches=rfc_matches,
-            notes=f"Definition query for RFC {rfc_num}",
+            notes={
+                "normalized": norm_meta.get("original"),
+                "vendor_inference": vend_meta,
+                "reason": f"Definition query for RFC {rfc_num}",
+            },
             mode_used="hybrid",
         )
     )

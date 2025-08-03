@@ -223,6 +223,23 @@ def assemble(
                 "processing_time_ms": (time.time() - start_time) * 1000,
             }
 
+        elif decision.intent == "ABSTAIN":
+            return {
+                "intent": "ABSTAIN",
+                "route": {
+                    "target": decision.target,
+                    "evidence": {
+                        "matched_terms": decision.matches,
+                        "confidence": decision.confidence,
+                        "notes": decision.notes,
+                    },
+                },
+                "error": "Query abstained",
+                "citations": [],
+                "confidence": decision.confidence,
+                "processing_time_ms": (time.time() - start_time) * 1000,
+            }
+
         else:
             return {
                 "error": f"Unknown intent: {decision.intent}",

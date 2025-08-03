@@ -266,15 +266,24 @@ def query(
         # Add mode information
         result["mode"] = "auto"
 
+        # Add reason_code for ABSTAIN cases
+        if decision.intent == "ABSTAIN" and decision.reason_code:
+            result["reason_code"] = decision.reason_code
+
         # Add explain block if requested
         if explain:
             result["explain"] = {
-                "confidence": decision.confidence,
-                "rules": (
-                    decision.notes.get("rules", [])
+                "normalized": (
+                    decision.notes.get("normalized")
                     if hasattr(decision.notes, "get")
-                    else []
+                    else None
                 ),
+                "vendor_inference": (
+                    decision.notes.get("vendor_inference")
+                    if hasattr(decision.notes, "get")
+                    else None
+                ),
+                "confidence": decision.confidence,
                 "ranked_reasons": (
                     decision.notes.get("ranked_reasons", [])
                     if hasattr(decision.notes, "get")

@@ -291,3 +291,32 @@ def test_auto_bgp_explain_includes_reasons(client):
     assert 0.60 <= xp.get("confidence", 0) <= 1.0
     assert xp.get("ranked_reasons")
     assert isinstance(xp.get("matches", {}), dict)
+
+
+def test_offtopic_abstain_reason_code(client):
+    """Test that off-topic queries return ABSTAIN with OFFTOPIC reason code."""
+    r = client.post("/query?mode=auto", json={"query": "weather in paris"})
+    j = r.json()
+    assert j.get("intent") in ("ABSTAIN", "abstain")
+    assert j.get("reason_code") == "OFFTOPIC"
+
+
+def test_low_confidence_abstain_reason_code(client):
+    """Test that ambiguous queries return ABSTAIN with appropriate reason code."""
+    r = client.post("/query?mode=auto", json={"query": "protocol"})
+    j = r.json()
+    assert j.get("intent") in ("ABSTAIN", "abstain")
+    assert j.get("reason_code") in ("LOW_CONFIDENCE", "AMBIGUOUS", "SHORT_QUERY")
+
+
+def test_explain_shows_vendor_inference(client):
+    """Test that explain mode shows vendor inference information."""
+    r = client.post(
+        "/query?mode=auto&explain=true", json={"query": "Gi0/0 ospf neighbor down"}
+    )
+    j = r.json()
+    exp = j.get("explain", {})
+    assert "normalized" in exp and "vendor_inference" in exp
+    vi = exp.get("vendor_inference") or {}
+    # do not assert exact vendor, just structure
+    assert "hits" in vi or "if_hits" in vi

@@ -117,6 +117,41 @@ VENDOR_KEYWORDS: Set[str] = {
     "eos",
 }
 
+# Vendor inference hints with tokens and interface prefixes
+VENDOR_HINTS = {
+    "iosxe": {
+        "tokens": {"iosxe", "ios-xe", "cisco ios xe", "cisco xe", "cisco ios"},
+        "if_prefixes": {
+            "gi",
+            "gigabitethernet",
+            "te",
+            "tengigabitethernet",
+            "fa",
+            "fastethernet",
+        },
+    },
+    "junos": {
+        "tokens": {"junos", "juniper"},
+        "if_prefixes": {"ge-", "xe-", "et-", "ae", "lo0"},
+    },
+    "nxos": {
+        "tokens": {"nxos", "nx-os", "nexus"},
+        "if_prefixes": {"eth", "ethernet"},
+    },
+    "eos": {
+        "tokens": {"eos", "arista"},
+        "if_prefixes": {"et", "ethernet"},
+    },
+}
+
+# Canonical interface expansions for normalization
+IF_CANON = {
+    r"^gi(\d.*)$": r"gigabitethernet\1",
+    r"^te(\d.*)$": r"tengigabitethernet\1",
+    r"^fa(\d.*)$": r"fastethernet\1",
+    r"^eth(\d.*)$": r"ethernet\1",
+}
+
 # Canonical term to RFC number mapping for definitional queries
 CANONICAL_RFC_MAP: Dict[str, int] = {
     "ospf": 2328,
