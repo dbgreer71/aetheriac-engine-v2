@@ -254,7 +254,7 @@ def test_debug_route_reasons(client):
         "tcp-handshake",
         "ospf-neighbor-down",
     }
-    assert 0.5 <= body["confidence"] <= 1.0
+    assert 0.60 <= body["confidence"] <= 1.0
     reasons = body["notes"].get("ranked_reasons", [])
     assert reasons and all(isinstance(x, str) for x in reasons)
 
@@ -276,3 +276,18 @@ def test_insufficient_steps_guard(client):
         # If it succeeds, it should have a valid response
         assert body["intent"] == "TROUBLESHOOT"
         assert "step_hash" in body
+
+
+def test_auto_bgp_explain_includes_reasons(client):
+    """Test that /query?explain=true returns reasons and confidence."""
+    r = client.post(
+        "/query?mode=auto&explain=true",
+        json={"query": "iosxe bgp neighbor down 192.0.2.1"},
+    )
+    body = r.json()
+    assert r.status_code == 200
+    assert body.get("step_hash")
+    xp = body.get("explain", {})
+    assert 0.60 <= xp.get("confidence", 0) <= 1.0
+    assert xp.get("ranked_reasons")
+    assert isinstance(xp.get("matches", {}), dict)

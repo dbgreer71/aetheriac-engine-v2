@@ -36,15 +36,20 @@ class MatchEvidence:
     score: float  # 0..1
 
 
+# Thresholds for routing decisions
+MIN_CONFIDENCE_ROUTE = 0.60  # below this → ABSTAIN
+SHORT_QUERY_TOKEN_MAX = 2  # 1–2 tokens → ABSTAIN unless vendor+proto
+
 PROTO_WEIGHTS = {
-    "bgp": 1.0,
-    "tcp": 0.9,
-    "ospf": 0.95,
-    "neighbor": 0.35,
-    "down": 0.25,
+    "bgp": 1.15,
+    "ospf": 1.05,
+    "tcp": 1.00,
+    "neighbor": 0.40,
+    "down": 0.30,
     "idle": 0.2,
     "2-way": 0.2,
     "syn": 0.2,
+    "state": 0.30,  # for idle/2-way/exstart/syn etc
     "vendor": 0.4,
     "peer": 0.2,
     "iface": 0.2,
@@ -549,6 +554,23 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
                     for target, score, _, rules, _ in candidates[:3]
                 ],
             }
+
+            # Apply ABSTAIN guard for low confidence
+            if winner_score < MIN_CONFIDENCE_ROUTE:
+                return _cache_and_return(
+                    RouteDecision(
+                        intent="ABSTAIN",
+                        target="",
+                        confidence=round(winner_score, 3),
+                        matches=troubleshoot_matches + list(winner_tokens.keys()),
+                        notes={
+                            **notes_data,
+                            "reason": "below_min_confidence",
+                            "min": MIN_CONFIDENCE_ROUTE,
+                        },
+                        mode_used="hybrid",
+                    )
+                )
 
             return _cache_and_return(
                 RouteDecision(

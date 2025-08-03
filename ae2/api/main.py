@@ -197,6 +197,7 @@ def query(
     auth: str = Query(None),
     mtu: int = Query(None),
     pull: bool = Query(False),
+    explain: bool = Query(False),
     request: Request = None,
 ):
     # Handle auto mode with unified router
@@ -264,6 +265,27 @@ def query(
 
         # Add mode information
         result["mode"] = "auto"
+
+        # Add explain block if requested
+        if explain:
+            result["explain"] = {
+                "confidence": decision.confidence,
+                "rules": (
+                    decision.notes.get("rules", [])
+                    if hasattr(decision.notes, "get")
+                    else []
+                ),
+                "ranked_reasons": (
+                    decision.notes.get("ranked_reasons", [])
+                    if hasattr(decision.notes, "get")
+                    else []
+                ),
+                "matches": (
+                    decision.notes.get("matches", {})
+                    if hasattr(decision.notes, "get")
+                    else {}
+                ),
+            }
 
         return result
 
