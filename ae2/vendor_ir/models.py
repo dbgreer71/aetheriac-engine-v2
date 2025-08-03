@@ -113,6 +113,48 @@ class VendorCommandIR(BaseModel):
         elif self.intent == "show_port_security":
             iface = self.params.get("iface", "")
             return [f"show port-security interface {iface}"]
+        # BGP commands
+        elif self.intent == "show_bgp_neighbor_history":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show ip bgp neighbors {neighbor} | include flap"]
+        elif self.intent == "show_bgp_neighbor_events":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show ip bgp neighbors {neighbor} events"]
+        elif self.intent == "show_bgp_neighbor_timers":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show ip bgp neighbors {neighbor} | include timers"]
+        elif self.intent == "show_bgp_neighbor_config":
+            neighbor = self.params.get("neighbor", "")
+            return ["show running-config | section router bgp"]
+        elif self.intent == "show_bgp_neighbor_ttl":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show ip bgp neighbors {neighbor} | include ttl"]
+        elif self.intent == "show_bgp_neighbor_gtsm":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show ip bgp neighbors {neighbor} | include gtsm"]
+        elif self.intent == "show_bgp_neighbor_policy":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show ip bgp neighbors {neighbor} advertised-routes"]
+        elif self.intent == "show_bgp_neighbor_advertised":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show ip bgp neighbors {neighbor} advertised-routes"]
+        elif self.intent == "show_bgp_neighbor_received":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show ip bgp neighbors {neighbor} received-routes"]
+        elif self.intent == "show_bgp_neighbor_transport":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show ip bgp neighbors {neighbor} | include transport"]
+        elif self.intent == "show_bgp_neighbor_retrans":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show ip bgp neighbors {neighbor} | include retrans"]
+        elif self.intent == "show_bgp_dampening":
+            return ["show ip bgp dampening"]
+        elif self.intent == "show_bgp_dampening_penalties":
+            return ["show ip bgp dampening dampened-routes"]
+        elif self.intent == "show_processes_cpu":
+            return ["show processes cpu"]
+        elif self.intent == "show_memory_statistics":
+            return ["show memory statistics"]
         else:
             return [f"# Unknown intent: {self.intent}"]
 
@@ -197,6 +239,48 @@ class VendorCommandIR(BaseModel):
         elif self.intent == "show_port_security":
             iface = self.params.get("iface", "")
             return [f"show ethernet-switching interface {iface} detail"]
+        # BGP commands
+        elif self.intent == "show_bgp_neighbor_history":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show bgp neighbor {neighbor} | match flap"]
+        elif self.intent == "show_bgp_neighbor_events":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show bgp neighbor {neighbor} detail"]
+        elif self.intent == "show_bgp_neighbor_timers":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show bgp neighbor {neighbor} | match timers"]
+        elif self.intent == "show_bgp_neighbor_config":
+            neighbor = self.params.get("neighbor", "")
+            return ["show configuration protocols bgp | display set"]
+        elif self.intent == "show_bgp_neighbor_ttl":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show bgp neighbor {neighbor} | match ttl"]
+        elif self.intent == "show_bgp_neighbor_gtsm":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show bgp neighbor {neighbor} | match gtsm"]
+        elif self.intent == "show_bgp_neighbor_policy":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show bgp neighbor {neighbor} advertised-routes"]
+        elif self.intent == "show_bgp_neighbor_advertised":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show bgp neighbor {neighbor} advertised-routes"]
+        elif self.intent == "show_bgp_neighbor_received":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show bgp neighbor {neighbor} received-routes"]
+        elif self.intent == "show_bgp_neighbor_transport":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show bgp neighbor {neighbor} | match transport"]
+        elif self.intent == "show_bgp_neighbor_retrans":
+            neighbor = self.params.get("neighbor", "")
+            return [f"show bgp neighbor {neighbor} | match retrans"]
+        elif self.intent == "show_bgp_dampening":
+            return ["show bgp damping"]
+        elif self.intent == "show_bgp_dampening_penalties":
+            return ["show bgp damping dampened-routes"]
+        elif self.intent == "show_processes_cpu":
+            return ["show system processes cpu"]
+        elif self.intent == "show_memory_statistics":
+            return ["show system memory"]
         else:
             return [f"# Unknown intent: {self.intent}"]
 
