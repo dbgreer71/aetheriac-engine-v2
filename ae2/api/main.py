@@ -1,14 +1,20 @@
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Request
 from pydantic import BaseModel
 from pathlib import Path
 from contextlib import asynccontextmanager
 import hashlib
 import json
 import os
+import time
+from typing import List, Optional, Dict
 from ae2.retriever.index_store import IndexStore
 from ae2.concepts.compiler import compile_concept
 from ae2.concepts.store import ConceptStore
 from ae2.concepts.errors import ConceptCompileError
+from ae2.playbooks.models import PlayContext
+from ae2.playbooks.engine import get_playbook_explanation
+from ae2.router.router import route
+from ae2.assembler.dispatcher import assemble
 
 try:
     from ae2.router.definitional_router import get_target_rfcs
@@ -32,6 +38,40 @@ async def lifespan(app: FastAPI):
 
     logger = logging.getLogger(__name__)
     logger.info("AE v2 lifespan startup: loading index from %s", AE_INDEX_DIR)
+
+    # Initialize cache if enabled
+    cache_enabled = os.getenv("AE_CACHE_ENABLED", "0").lower() in ("1", "true", "yes")
+    if cache_enabled:
+        try:
+            from ae2.common.ttl_lru import init_cache
+
+            cache_size = int(os.getenv("AE_CACHE_SIZE", "1000"))
+            cache_ttl = int(os.getenv("AE_CACHE_TTL_S", "300"))
+            init_cache(maxsize=cache_size, ttl_seconds=cache_ttl)
+            logger.info("Cache initialized: size=%d, ttl=%ds", cache_size, cache_ttl)
+        except ImportError:
+            logger.warning("Cache module not available, continuing without cache")
+
+    # Initialize observability if enabled
+    json_logs_enabled = os.getenv("AE_JSON_LOGS", "1").lower() in ("1", "true", "yes")
+    if json_logs_enabled:
+        try:
+            from ae2.obs.logging import setup_json_logging
+            from ae2.obs.middleware import ObservabilityMiddleware
+
+            log_sample_rate = float(os.getenv("AE_LOG_SAMPLE", "1.0"))
+            setup_json_logging(sample_rate=log_sample_rate)
+
+            # Register middleware
+            app.add_middleware(ObservabilityMiddleware, sample_rate=log_sample_rate)
+            logger.info(
+                "Observability middleware registered: sample_rate=%.2f", log_sample_rate
+            )
+        except ImportError:
+            logger.warning(
+                "Observability modules not available, continuing without structured logging"
+            )
+
     store = IndexStore(AE_INDEX_DIR)
     concept_store = ConceptStore()
     # load manifest and compute current hash for /debug/index
@@ -61,15 +101,52 @@ class QueryReq(BaseModel):
 
 @app.get("/healthz")
 def healthz():
-    manifest = getattr(app.state, "manifest", None)
-    stats = store.stats() if store else {}
+    """Lightweight health check - always returns OK if service is running."""
     return {
         "ok": True,
-        "index_dir": str(AE_INDEX_DIR),
-        "total_sections": stats.get("total_sections"),
-        "rfc_numbers": stats.get("rfc_numbers"),
-        "manifest_present": bool(manifest),
+        "service": "ae2",
+        "timestamp": time.time(),
     }
+
+
+@app.get("/readyz")
+def readyz():
+    """Readiness check - returns OK only if all dependencies are ready."""
+    manifest = getattr(app.state, "manifest", None)
+    stats = store.stats() if store else {}
+
+    # Check if index is loaded and has sections
+    index_ready = store is not None and stats.get("total_sections", 0) > 0
+
+    # Check if concept store is ready (if enabled)
+    concept_ready = True
+    if concept_store is not None:
+        try:
+            concept_store.gc_manifest()
+            concept_ready = True
+        except Exception:
+            concept_ready = False
+
+    # Overall readiness
+    ready = index_ready and concept_ready
+
+    return {
+        "ok": ready,
+        "index_ready": index_ready,
+        "concept_ready": concept_ready,
+        "total_sections": stats.get("total_sections", 0),
+        "manifest_present": bool(manifest),
+        "timestamp": time.time(),
+    }
+
+
+@app.get("/metrics")
+def metrics():
+    """Prometheus metrics endpoint."""
+    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+    from fastapi.responses import Response
+
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 @app.get("/debug/explain")
@@ -91,20 +168,11 @@ def debug_index():
     concepts_root_hash = None
     if concept_store:
         try:
-            concept_ids = concept_store.list_ids()
-            concepts_count = len(concept_ids)
-
-            # Compute hash over all concept card JSONs (sorted for determinism)
-            if concepts_count > 0:
-                import hashlib
-
-                h = hashlib.sha256()
-                for card_id in sorted(concept_ids):
-                    card = concept_store.load(card_id)
-                    # Hash the card's JSON representation
-                    card_json = card.model_dump_json()
-                    h.update(card_json.encode("utf-8"))
-                concepts_root_hash = h.hexdigest()
+            # Run GC to ensure accurate counts
+            concept_store.gc_manifest()
+            concepts = concept_store.list_concepts()
+            concepts_count = len(concepts)
+            concepts_root_hash = concept_store.get_root_hash()
         except Exception:
             # If concept store fails, continue with defaults
             pass
@@ -120,7 +188,86 @@ def debug_index():
 
 
 @app.post("/query")
-def query(req: QueryReq, mode: str = Query("hybrid")):
+def query(
+    req: QueryReq,
+    mode: str = Query("hybrid"),
+    vendor: str = Query(None),
+    iface: str = Query(None),
+    area: str = Query(None),
+    auth: str = Query(None),
+    mtu: int = Query(None),
+    pull: bool = Query(False),
+    request: Request = None,
+):
+    # Handle auto mode with unified router
+    if mode == "auto":
+        if store is None or concept_store is None:
+            raise HTTPException(status_code=500, detail="Stores not initialized")
+
+        # Prepare stores dictionary
+        stores = {"index_store": store, "concept_store": concept_store}
+
+        # Prepare parameters
+        params = {}
+        if vendor:
+            params["vendor"] = vendor
+        if iface:
+            params["iface"] = iface
+        if area:
+            params["area"] = area
+        if auth:
+            params["auth"] = auth
+        if mtu:
+            params["mtu"] = mtu
+        if pull:
+            params["pull"] = pull
+
+        # Route the query
+        decision = route(req.query, stores)
+
+        # Record metrics if enabled
+        metrics_enabled = os.getenv("AE_ENABLE_METRICS", "1").lower() in (
+            "1",
+            "true",
+            "yes",
+        )
+        if metrics_enabled and request:
+            try:
+                from ae2.obs.metrics import record_router_intent, record_router_target
+
+                # Record router metrics
+                record_router_intent(decision.intent)
+
+                # Determine target kind and name
+                target_kind = "unknown"
+                target_name = decision.target
+
+                if decision.intent == "DEFINE":
+                    target_kind = "rfc"
+                elif decision.intent == "CONCEPT":
+                    target_kind = "concept"
+                elif decision.intent == "TROUBLESHOOT":
+                    target_kind = "playbook"
+
+                record_router_target(target_kind, target_name)
+
+                # Store in request state for middleware
+                request.state.intent = decision.intent
+                request.state.target = target_name
+                request.state.mode = mode
+
+            except ImportError:
+                pass
+
+        # Assemble the response
+        result = assemble(decision, req.query, params, stores)
+
+        # Add mode information
+        result["mode"] = "auto"
+
+        return result
+
+    # Handle existing modes (tfidf, bm25, hybrid)
     targets = get_target_rfcs(req.query)
     hits = store.search(
         req.query, top_k=req.top_k, rfc_filter=targets or None, mode=mode
@@ -142,13 +289,101 @@ def query(req: QueryReq, mode: str = Query("hybrid")):
 
 
 @app.post("/concepts/compile")
-def compile_concept_endpoint(slug: str = Query(...)):
+def compile_concept_endpoint(
+    slug: str = Query(...), save: bool = Query(False), pull: bool = Query(False)
+):
     """Compile a concept card for the given slug."""
     if store is None:
         raise HTTPException(status_code=500, detail="Index store not initialized")
 
     try:
         card = compile_concept(slug, store, concept_store)
+
+        # Save to disk if requested
+        if save:
+            if concept_store is None:
+                raise HTTPException(
+                    status_code=500, detail="Concept store not initialized"
+                )
+            concept_store.save(card)
+
+        # Handle pull-through compilation
+        pulled = []
+        pulled_errors = []
+        if pull and save and concept_store:
+            # Compile related concepts that are missing
+            for related_slug in card.related:
+                if not concept_store.exists(related_slug):
+                    try:
+                        related_card = compile_concept(
+                            related_slug, store, concept_store
+                        )
+                        concept_store.save(related_card)
+                        pulled.append(related_slug)
+                    except ConceptCompileError as e:
+                        pulled_errors.append(
+                            {"slug": related_slug, "code": e.code, "message": e.msg}
+                        )
+                    except Exception as e:
+                        pulled_errors.append(
+                            {
+                                "slug": related_slug,
+                                "code": "UNKNOWN_ERROR",
+                                "message": str(e),
+                            }
+                        )
+
+        response = card.model_dump()
+        if pull:
+            response["pulled"] = pulled
+            response["pulled_errors"] = pulled_errors
+
+        return response
+    except ConceptCompileError as e:
+        # Return structured error information for concept compilation errors
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "concept_compile_error",
+                "code": e.code,
+                "message": e.msg,
+                "slug": slug,
+            },
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/concepts/list")
+def list_concepts():
+    """List all concepts with manifest data."""
+    if concept_store is None:
+        raise HTTPException(status_code=500, detail="Concept store not initialized")
+
+    try:
+        # Get current index root hash for stale detection
+        current_index_root_hash = getattr(app.state, "root_hash", None)
+
+        return concept_store.list_concepts_with_stale(current_index_root_hash)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/concepts/rebuild")
+def rebuild_concept(slug: str = Query(...)):
+    """Rebuild a concept card from the current index."""
+    if store is None:
+        raise HTTPException(status_code=500, detail="Index store not initialized")
+    if concept_store is None:
+        raise HTTPException(status_code=500, detail="Concept store not initialized")
+
+    try:
+        # Recompile the card
+        card = compile_concept(slug, store, concept_store)
+
+        # Save the rebuilt card (this will overwrite the existing file)
+        concept_store.save(card)
+
         return card.model_dump()
     except ConceptCompileError as e:
         # Return structured error information for concept compilation errors
@@ -165,19 +400,258 @@ def compile_concept_endpoint(slug: str = Query(...)):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.get("/concepts/{card_id}")
-def get_concept(card_id: str):
-    """Get a concept card by ID."""
+@app.delete("/concepts/{slug}")
+def delete_concept(slug: str):
+    """Delete a concept card by slug."""
     if concept_store is None:
         raise HTTPException(status_code=500, detail="Concept store not initialized")
 
     try:
-        card = concept_store.load(card_id)
-        return card.model_dump()
+        deleted = concept_store.delete_card(slug)
+        if deleted:
+            return {"ok": True}
+        else:
+            # Return 204 for idempotent delete (card didn't exist)
+            from fastapi import Response
+
+            return Response(status_code=204)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/concepts/schema")
+def get_concept_schema():
+    """Get JSON schema for concept cards."""
+    from ae2.concepts.models import ConceptCard
+
+    return ConceptCard.model_json_schema()
+
+
+@app.get("/concepts/validate/{slug}")
+def validate_concept_references(slug: str):
+    """Validate references for a concept card."""
+    if concept_store is None:
+        raise HTTPException(status_code=500, detail="Concept store not initialized")
+
+    try:
+        return concept_store.validate_references(slug)
     except FileNotFoundError:
-        raise HTTPException(
-            status_code=404, detail=f"Concept card not found: {card_id}"
+        raise HTTPException(status_code=404, detail=f"Concept card not found: {slug}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/concepts/search")
+def search_concepts(
+    q: str = Query(...), limit: int = Query(10), offset: int = Query(0)
+):
+    """Search persisted concept cards."""
+    if concept_store is None:
+        raise HTTPException(status_code=500, detail="Concept store not initialized")
+
+    from ae2.concepts.search import search_cards
+
+    try:
+        # Get all cards
+        cards = concept_store.get_all_cards()
+
+        # Get current index root hash for stale resolution
+        current_index_root_hash = getattr(app.state, "root_hash", None)
+
+        def stale_resolver(slug: str) -> bool:
+            """Resolve stale flag for a slug."""
+            if current_index_root_hash is None:
+                return False
+
+            try:
+                card = concept_store.load(slug)
+                stored_hash = card.provenance.index_root_hash
+                return stored_hash != current_index_root_hash
+            except Exception:
+                return True
+
+        # Search cards
+        total, items = search_cards(cards, q, limit, offset, stale_resolver)
+
+        return {"total": total, "items": items}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/concepts/tags")
+def get_concept_tags():
+    """Get tag counts for all concepts."""
+    if concept_store is None:
+        raise HTTPException(status_code=500, detail="Concept store not initialized")
+
+    try:
+        tag_counts = concept_store.get_tag_counts()
+        return {"tags": tag_counts}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+class CompileManyRequest(BaseModel):
+    slugs: List[str]
+    mode: str = "hybrid"
+
+
+class ExportRequest(BaseModel):
+    slugs: Optional[List[str]] = None
+
+
+@app.post("/concepts/compile_many")
+def compile_many_concepts(request: CompileManyRequest, save: bool = Query(False)):
+    """Compile multiple concept cards with bounded concurrency."""
+    if store is None:
+        raise HTTPException(status_code=500, detail="Index store not initialized")
+    if concept_store is None:
+        raise HTTPException(status_code=500, detail="Concept store not initialized")
+
+    from concurrent.futures import ThreadPoolExecutor
+
+    # Compile concepts with bounded concurrency
+    results = []
+    saved_count = 0
+
+    def compile_single(slug: str) -> Dict[str, any]:
+        try:
+            card = compile_concept(slug, store, None)  # Don't save yet
+            card_dict = card.model_dump()
+
+            # Save if requested
+            if save:
+                concept_store.save(card)
+                return {
+                    "slug": slug,
+                    "status": "ok",
+                    "id": card.id,
+                    "sha256": concept_store._compute_card_hash(card_dict),
+                    "saved": True,
+                }
+            else:
+                return {
+                    "slug": slug,
+                    "status": "ok",
+                    "id": card.id,
+                    "sha256": concept_store._compute_card_hash(card_dict),
+                    "saved": False,
+                }
+        except ConceptCompileError as e:
+            return {
+                "slug": slug,
+                "status": "error",
+                "error": {"code": e.code, "message": e.msg},
+            }
+        except Exception as e:
+            return {
+                "slug": slug,
+                "status": "error",
+                "error": {"code": "UNKNOWN_ERROR", "message": str(e)},
+            }
+
+    # Use thread pool for bounded concurrency
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        futures = [executor.submit(compile_single, slug) for slug in request.slugs]
+        results = [future.result() for future in futures]
+
+    # Count saved items
+    saved_count = sum(1 for result in results if result.get("saved", False))
+
+    return {"ok": True, "results": results, "saved_count": saved_count}
+
+
+@app.post("/concepts/export")
+def export_concepts(request: ExportRequest = None):
+    """Export concepts to a ZIP file."""
+    if concept_store is None:
+        raise HTTPException(status_code=500, detail="Concept store not initialized")
+
+    from fastapi.responses import Response
+
+    # Get slugs from request (None means export all)
+    slugs = request.slugs if request else None
+
+    # Export concepts
+    try:
+        zip_data = concept_store.export_concepts(slugs)
+
+        return Response(
+            content=zip_data,
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": 'attachment; filename="concepts_export.zip"'
+            },
         )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Export failed: {str(e)}")
+
+
+@app.get("/concepts/diff/{slug}")
+def get_concept_diff(slug: str, recompile: bool = Query(True)):
+    """Get diff between stored and current concept card."""
+    if store is None:
+        raise HTTPException(status_code=500, detail="Index store not initialized")
+    if concept_store is None:
+        raise HTTPException(status_code=500, detail="Concept store not initialized")
+
+    from ae2.concepts.diff import card_diff
+
+    try:
+        # Load the stored card
+        stored_card = concept_store.load(slug)
+        stored_dict = stored_card.model_dump()
+
+        if recompile:
+            # Compile current card from live index
+            current_card = compile_concept(slug, store, None)  # Don't save
+            current_dict = current_card.model_dump()
+        else:
+            # Return empty diff (stored vs stored)
+            current_dict = stored_dict
+
+        # Compute diff
+        diff_result = card_diff(stored_dict, current_dict)
+
+        # Add provenance information
+        stored_index_hash = stored_card.provenance.index_root_hash
+        live_index_hash = getattr(app.state, "root_hash", None)
+
+        diff_result["provenance"] = {
+            "stored_index": stored_index_hash,
+            "live_index": live_index_hash,
+        }
+
+        return diff_result
+
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Concept card not found: {slug}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/concepts/{slug}")
+def get_concept_by_slug(slug: str):
+    """Get a concept card by slug."""
+    if concept_store is None:
+        raise HTTPException(status_code=500, detail="Concept store not initialized")
+
+    try:
+        card = concept_store.load(slug)
+        card_dict = card.model_dump()
+
+        # Add stale flag
+        current_index_root_hash = getattr(app.state, "root_hash", None)
+
+        if current_index_root_hash is not None:
+            stored_hash = card.provenance.index_root_hash
+            card_dict["stale"] = stored_hash != current_index_root_hash
+        else:
+            card_dict["stale"] = False
+
+        return card_dict
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Concept card not found: {slug}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -210,14 +684,72 @@ def debug_concept(card_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/concepts")
-def list_concepts():
-    """List all available concept card IDs."""
-    if concept_store is None:
-        raise HTTPException(status_code=500, detail="Concept store not initialized")
+@app.post("/troubleshoot/ospf-neighbor")
+def troubleshoot_ospf_neighbor(ctx: PlayContext):
+    """Execute OSPF neighbor-down troubleshooting playbook."""
+    if store is None:
+        raise HTTPException(status_code=500, detail="Index store not initialized")
 
     try:
-        return {"concept_ids": concept_store.list_ids()}
+        # Use assembler for consistent behavior and step hash
+        from ae2.assembler.playbook import assemble_playbook
+
+        # Create context dict from PlayContext
+        context = {
+            "vendor": ctx.vendor,
+            "iface": ctx.iface,
+            "area": ctx.area,
+            "auth": ctx.auth,
+            "mtu": ctx.mtu,
+        }
+
+        result = assemble_playbook("ospf-neighbor-down", "", store, context)
+
+        return {
+            "playbook_id": result.get("playbook_id", "ospf-neighbor-down"),
+            "steps": result.get("steps", []),
+            "step_hash": result.get("step_hash", ""),
+            "debug": {
+                "matched_rules": len(result.get("steps", [])),
+                "vendor": ctx.vendor,
+                "iface": ctx.iface,
+                "area": ctx.area,
+            },
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/debug/explain_playbook")
+def explain_playbook(slug: str = Query(...), vendor: str = Query(...)):
+    """Get explanation of a playbook's rules and commands."""
+    try:
+        explanation = get_playbook_explanation(slug, vendor)
+        return explanation
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/debug/route")
+def debug_route(query: str = Query(...)):
+    """Get routing decision for a query without assembly."""
+    if store is None or concept_store is None:
+        raise HTTPException(status_code=500, detail="Stores not initialized")
+
+    try:
+        stores = {"index_store": store, "concept_store": concept_store}
+
+        decision = route(query, stores)
+
+        return {
+            "query": query,
+            "intent": decision.intent,
+            "target": decision.target,
+            "confidence": decision.confidence,
+            "matches": decision.matches,
+            "notes": decision.notes,
+            "mode_used": decision.mode_used,
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
