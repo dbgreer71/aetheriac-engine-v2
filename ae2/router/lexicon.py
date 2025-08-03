@@ -177,6 +177,29 @@ BGP_TERMS: Set[str] = {
     "remote as",
 }
 
+# TCP-specific terms for handshake failure detection
+TCP_TERMS: Set[str] = {
+    "tcp",
+    "syn",
+    "syn-ack",
+    "handshake",
+    "three way",
+    "reset",
+    "rst",
+    "timeout",
+    "refused",
+    "mss",
+    "pmtud",
+    "blackhole",
+    "connection",
+    "port",
+    "listen",
+    "established",
+    "close",
+    "fin",
+    "ack",
+}
+
 # Vendor keywords for troubleshooting
 VENDOR_KEYWORDS: Set[str] = {
     "iosxe",
@@ -228,6 +251,11 @@ PLAYBOOK_SLUG_MAP: Dict[str, str] = {
     "bgp": "bgp-neighbor-down",
     "bgp neighbor": "bgp-neighbor-down",
     "bgp neighbor down": "bgp-neighbor-down",
+    "tcp": "tcp-handshake",
+    "tcp handshake": "tcp-handshake",
+    "tcp connection": "tcp-handshake",
+    "tcp timeout": "tcp-handshake",
+    "tcp refused": "tcp-handshake",
     "bgp session": "bgp-neighbor-down",
     "bgp down": "bgp-neighbor-down",
     "bgp peer": "bgp-neighbor-down",

@@ -157,6 +157,33 @@ def _create_play_context(query: str, context: Dict[str, Any] = None) -> PlayCont
     if ipv4_matches:
         peer = ipv4_matches[0]  # Use first IPv4 address found
 
+    # Extract TCP destination and port from query
+    dst = None
+    dport = None
+    if ":" in query:
+        # Look for IP:port pattern
+        port_pattern = r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}:\d+\b"
+        port_matches = re.findall(port_pattern, query)
+        if port_matches:
+            dst_port = port_matches[0].split(":")
+            dst = dst_port[0]
+            dport = dst_port[1]
+        else:
+            # Look for separate IP and port
+            if ipv4_matches:
+                dst = ipv4_matches[0]
+            port_pattern = r"\b\d{1,5}\b"
+            port_matches = re.findall(port_pattern, query)
+            if port_matches:
+                dport = port_matches[0]
+
     return PlayContext(
-        vendor=vendor, iface=iface, area=area, auth=auth, mtu=mtu, peer=peer
+        vendor=vendor,
+        iface=iface,
+        area=area,
+        auth=auth,
+        mtu=mtu,
+        peer=peer,
+        dst=dst,
+        dport=dport,
     )

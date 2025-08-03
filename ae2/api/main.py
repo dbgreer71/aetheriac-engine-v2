@@ -877,6 +877,49 @@ def troubleshoot_bgp_neighbor(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/troubleshoot/tcp-handshake")
+def troubleshoot_tcp_handshake(
+    ctx: PlayContext,
+    current_user=Depends(get_auth_dependency(Permission.READ_PLAYBOOKS)),
+):
+    """Execute TCP handshake troubleshooting playbook."""
+    if store is None:
+        raise HTTPException(status_code=500, detail="Index store not initialized")
+
+    try:
+        # Use assembler for consistent behavior and step hash
+        from ae2.assembler.playbook import assemble_playbook
+
+        # Create context dict from PlayContext
+        context = {
+            "vendor": ctx.vendor,
+            "iface": ctx.iface,
+            "area": ctx.area,
+            "auth": ctx.auth,
+            "mtu": ctx.mtu,
+            "peer": ctx.peer,
+            "src": ctx.src,
+            "dst": ctx.dst,
+            "dport": ctx.dport,
+        }
+
+        result = assemble_playbook("tcp-handshake", "", store, context)
+
+        return {
+            "playbook_id": result.get("playbook_id", "tcp-handshake"),
+            "steps": result.get("steps", []),
+            "step_hash": result.get("step_hash", ""),
+            "debug": {
+                "matched_rules": len(result.get("steps", [])),
+                "vendor": ctx.vendor,
+                "dst": ctx.dst,
+                "dport": ctx.dport,
+            },
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/debug/explain_playbook")
 def explain_playbook(
     slug: str = Query(...),

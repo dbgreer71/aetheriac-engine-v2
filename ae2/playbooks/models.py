@@ -55,6 +55,9 @@ class PlayContext(BaseModel):
     mtu: Optional[int] = Field(None, description="Interface MTU")
     peer: Optional[str] = Field(None, description="BGP peer IP address")
     vrf: Optional[str] = Field(None, description="VRF name")
+    src: Optional[str] = Field(None, description="Source IP address for TCP")
+    dst: Optional[str] = Field(None, description="Destination IP address for TCP")
+    dport: Optional[str] = Field(None, description="Destination port for TCP")
 
 
 class PlayResultStep(BaseModel):

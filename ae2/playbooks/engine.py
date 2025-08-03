@@ -131,6 +131,10 @@ def run_playbook(slug: str, ctx: PlayContext, store: IndexStore) -> PlayResult:
         from .bgp_neighbor_down import create_bgp_neighbor_playbook
 
         playbook = create_bgp_neighbor_playbook()
+    elif slug == "tcp-handshake":
+        from .tcp_handshake import run_tcp_handshake_playbook
+
+        return run_tcp_handshake_playbook(ctx, store)
     else:
         raise ValueError(f"Unknown playbook: {slug}")
 

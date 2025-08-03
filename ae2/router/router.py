@@ -14,6 +14,7 @@ from .lexicon import (
     find_playbook_slug,
     get_confidence_score,
     BGP_TERMS,
+    TCP_TERMS,
     OFFTOPIC_TERMS,
     AMBIGUOUS_PATTERNS,
 )
@@ -244,6 +245,100 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
                 confidence=get_confidence_score(all_matches, "TROUBLESHOOT"),
                 matches=all_matches,
                 notes=f"BGP troubleshooting detected for bgp-neighbor-down on {vendor}. Reasons: {', '.join(reasons)}",
+                mode_used="hybrid",
+            )
+        )
+
+    # Special handling for TCP handshake failure queries - prefer TROUBLESHOOT
+    tcp_terms_present = any(term in query_lower for term in TCP_TERMS)
+    tcp_state_terms_present = any(
+        term in query_lower
+        for term in [
+            "syn",
+            "rst",
+            "timeout",
+            "refused",
+            "mss",
+            "pmtud",
+            "blackhole",
+            "handshake",
+            "connection",
+        ]
+    )
+
+    if tcp_terms_present and tcp_state_terms_present:
+        playbook_slug, playbook_matches = find_playbook_slug(query)
+        all_matches = troubleshoot_matches + playbook_matches + ["tcp"]
+        reasons = ["tcp+state_terms"]
+
+        # Validate vendor for troubleshooting
+        allowed_vendors = ["iosxe", "junos"]  # TODO: make configurable
+
+        # Normalize vendor name
+        if vendor == "ios" or vendor == "cisco":
+            vendor = "iosxe"
+
+        if vendor and vendor not in allowed_vendors:
+            return _cache_and_return(
+                RouteDecision(
+                    intent="DEFINE",
+                    target="793",  # Default to TCP RFC
+                    confidence=0.3,
+                    matches=all_matches,
+                    notes=f"TCP troubleshooting requested but vendor '{vendor}' not supported. Supported: {allowed_vendors}",
+                    mode_used="hybrid",
+                )
+            )
+
+        if vendor:
+            reasons.append(f"vendor:{vendor}")
+
+        return _cache_and_return(
+            RouteDecision(
+                intent="TROUBLESHOOT",
+                target="tcp-handshake",
+                confidence=get_confidence_score(all_matches, "TROUBLESHOOT"),
+                matches=all_matches,
+                notes=f"TCP troubleshooting detected for tcp-handshake on {vendor if vendor else 'unknown vendor'}. Reasons: {', '.join(reasons)}",
+                mode_used="hybrid",
+            )
+        )
+
+    # Additional TCP detection: vendor present and tcp present
+    vendor_present = vendor is not None
+    if vendor_present and "tcp" in query_lower:
+        playbook_slug, playbook_matches = find_playbook_slug(query)
+        all_matches = troubleshoot_matches + playbook_matches + ["tcp", vendor]
+        reasons = ["tcp+vendor"]
+
+        # Validate vendor for troubleshooting
+        allowed_vendors = ["iosxe", "junos"]  # TODO: make configurable
+
+        # Normalize vendor name
+        if vendor == "ios" or vendor == "cisco":
+            vendor = "iosxe"
+
+        if vendor not in allowed_vendors:
+            return _cache_and_return(
+                RouteDecision(
+                    intent="DEFINE",
+                    target="793",  # Default to TCP RFC
+                    confidence=0.3,
+                    matches=all_matches,
+                    notes=f"TCP troubleshooting requested but vendor '{vendor}' not supported. Supported: {allowed_vendors}",
+                    mode_used="hybrid",
+                )
+            )
+
+        reasons.append(f"vendor:{vendor}")
+
+        return _cache_and_return(
+            RouteDecision(
+                intent="TROUBLESHOOT",
+                target="tcp-handshake",
+                confidence=get_confidence_score(all_matches, "TROUBLESHOOT"),
+                matches=all_matches,
+                notes=f"TCP troubleshooting detected for tcp-handshake on {vendor}. Reasons: {', '.join(reasons)}",
                 mode_used="hybrid",
             )
         )
