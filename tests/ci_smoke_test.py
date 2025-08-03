@@ -207,3 +207,32 @@ def test_ospf_step_hash_consistency(client):
 
     # All hashes should be the same for same playbook
     assert len(set(hashes)) == 1
+
+
+def test_auto_ranking_bgp_over_ospf_when_bgp_terms_present(client):
+    """Test that BGP is ranked higher than OSPF when BGP terms are present."""
+    q = "iosxe bgp neighbor down 192.0.2.1 on g0/0"
+    r = client.post("/query?mode=auto", json={"query": q})
+    body = r.json()
+    assert body["intent"] == "TROUBLESHOOT"
+    assert body["route"]["target"] == "bgp-neighbor-down"
+    assert "step_hash" in body
+    # winner must be present in notes.ranked[0]
+    assert body["notes"]["ranked"][0]["target"] == "bgp-neighbor-down"
+
+
+def test_auto_ranking_ospf_over_bgp_when_ospf_state_terms_present(client):
+    """Test that OSPF is ranked higher than BGP when OSPF state terms are present."""
+    q = "junos ospf neighbor stuck in 2-way on ge-0/0/0 area 0.0.0.0"
+    r = client.post("/query?mode=auto", json={"query": q})
+    b = r.json()
+    assert b["route"]["target"] == "ospf-neighbor-down"
+    assert b["notes"]["ranked"][0]["target"] == "ospf-neighbor-down"
+
+
+def test_step_hash_stable_auto(client):
+    """Test that step hash is stable across multiple calls."""
+    q = "iosxe bgp neighbor down 192.0.2.1"
+    h1 = client.post("/query?mode=auto", json={"query": q}).json()["step_hash"]
+    h2 = client.post("/query?mode=auto", json={"query": q}).json()["step_hash"]
+    assert h1 == h2
