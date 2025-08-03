@@ -25,6 +25,8 @@ def client():
     # Set environment for testing
     os.environ["ENABLE_DENSE"] = "0"
     os.environ["AE_INDEX_DIR"] = "data/index"
+    os.environ["AE_ENABLE_METRICS"] = "0"  # Disable metrics to avoid middleware issues
+    os.environ["AE_JSON_LOGS"] = "0"  # Disable JSON logs to avoid middleware issues
 
     # Use TestClient with proper lifespan management
     with TestClient(app) as test_client:
