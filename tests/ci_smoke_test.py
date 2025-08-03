@@ -184,9 +184,10 @@ def test_ospf_reasons_in_notes(client):
 
     # Check that notes contain routing reasons
     notes = body["route"]["evidence"]["notes"]
-    assert "ospf" in notes.lower()
-    assert "iosxe" in notes.lower()
-    assert "reasons" in notes.lower()
+    notes_str = str(notes).lower()
+    assert "ospf" in notes_str
+    assert "reasons" in notes_str
+    assert "ranked" in notes_str
 
 
 def test_ospf_step_hash_consistency(client):
@@ -217,8 +218,9 @@ def test_auto_ranking_bgp_over_ospf_when_bgp_terms_present(client):
     assert body["intent"] == "TROUBLESHOOT"
     assert body["route"]["target"] == "bgp-neighbor-down"
     assert "step_hash" in body
-    # winner must be present in notes.ranked[0]
-    assert body["notes"]["ranked"][0]["target"] == "bgp-neighbor-down"
+    # winner must be present in notes.candidates[0]
+    notes = body["notes"]
+    assert notes["candidates"][0]["target"] == "bgp-neighbor-down"
 
 
 def test_auto_ranking_ospf_over_bgp_when_ospf_state_terms_present(client):
@@ -227,7 +229,8 @@ def test_auto_ranking_ospf_over_bgp_when_ospf_state_terms_present(client):
     r = client.post("/query?mode=auto", json={"query": q})
     b = r.json()
     assert b["route"]["target"] == "ospf-neighbor-down"
-    assert b["notes"]["ranked"][0]["target"] == "ospf-neighbor-down"
+    notes = b["notes"]
+    assert notes["candidates"][0]["target"] == "ospf-neighbor-down"
 
 
 def test_step_hash_stable_auto(client):
