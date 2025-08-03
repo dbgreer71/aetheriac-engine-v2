@@ -315,6 +315,14 @@ def run_playbook(slug: str, ctx: PlayContext, store: IndexStore) -> PlayResult:
         from .arp_anomalies import run_arp_playbook
 
         return run_arp_playbook(ctx, store)
+    elif slug == "bgp-flap":
+        from .bgp_flap import run_bgp_flap_playbook
+
+        return run_bgp_flap_playbook(ctx, store)
+    elif slug == "ospf-lsa-storm":
+        from .ospf_lsa_storm import run_ospf_lsa_storm_playbook
+
+        return run_ospf_lsa_storm_playbook(ctx, store)
     else:
         raise ValueError(f"Unknown playbook: {slug}")
     steps = []
@@ -398,6 +406,57 @@ def _generate_commands_for_rule(rule: Rule, ctx: PlayContext) -> List[str]:
         "check_errdisable_sanity": [
             "show_errdisable_recovery",
             "show_errdisable_detect",
+        ],
+        # BGP flap commands
+        "check_neighbor_flap_history": [
+            "show_bgp_neighbor_history",
+            "show_bgp_neighbor_events",
+        ],
+        "check_keepalive_hold_timers": [
+            "show_bgp_neighbor_timers",
+            "show_bgp_neighbor_config",
+        ],
+        "check_gtsm_ttl_config": ["show_bgp_neighbor_ttl", "show_bgp_neighbor_gtsm"],
+        "check_policy_churn": [
+            "show_bgp_neighbor_policy",
+            "show_bgp_neighbor_advertised",
+        ],
+        "check_prefix_churn": [
+            "show_bgp_neighbor_received",
+            "show_bgp_neighbor_advertised",
+        ],
+        "check_transport_health": [
+            "show_bgp_neighbor_transport",
+            "show_bgp_neighbor_retrans",
+        ],
+        "check_dampening_effect": [
+            "show_bgp_dampening",
+            "show_bgp_dampening_penalties",
+        ],
+        "check_device_load_spikes": ["show_processes_cpu", "show_memory_statistics"],
+        # OSPF LSA storm commands
+        "check_lsa_retransmit_queues": [
+            "show_ospf_retransmit_queues",
+            "show_ospf_neighbor_retransmit",
+        ],
+        "check_lsa_pacing_throttle": [
+            "show_ospf_lsa_pacing",
+            "show_ospf_throttle_config",
+        ],
+        "check_max_lsa_limits": ["show_ospf_max_lsa", "show_ospf_max_lsa_warnings"],
+        "check_drbdr_churn": ["show_ospf_neighbor_dr", "show_ospf_interface_dr"],
+        "check_misconfigs_generating_lsas": [
+            "show_ospf_lsa_generators",
+            "show_ospf_misconfigs",
+        ],
+        "check_lsa_type_distribution": [
+            "show_ospf_lsa_types",
+            "show_ospf_lsa_distribution",
+        ],
+        "check_spf_throttle_timers": ["show_ospf_spf_throttle", "show_ospf_spf_timers"],
+        "check_interface_errors_drops": [
+            "show_ospf_interface_errors",
+            "show_ospf_interface_drops",
         ],
         # ARP commands
         "check_svi_status": ["show_svi"],

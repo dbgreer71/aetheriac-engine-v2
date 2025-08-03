@@ -147,19 +147,8 @@ def create_ospf_lsa_storm_playbook() -> Playbook:
 
     return Playbook(
         id="ospf-lsa-storm",
-        name="OSPF LSA Storm Troubleshooting",
-        description="Deterministic troubleshooting for OSPF LSA storm issues",
+        applies_to=["ospf", "lsa", "link state advertisement"],
         rules=rules,
-        citations=[
-            rfc_2328_retransmit,
-            rfc_2328_pacing,
-            rfc_2328_maxlsa,
-            rfc_2328_drbdr,
-            rfc_2328_misconfig,
-            rfc_2328_lsa_types,
-            rfc_2328_spf_throttle,
-            rfc_2328_interface_errors,
-        ],
     )
 
 

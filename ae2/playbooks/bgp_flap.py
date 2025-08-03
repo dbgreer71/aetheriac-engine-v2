@@ -147,19 +147,8 @@ def create_bgp_flap_playbook() -> Playbook:
 
     return Playbook(
         id="bgp-flap",
-        name="BGP Flap Troubleshooting",
-        description="Deterministic troubleshooting for BGP neighbor flap issues",
+        applies_to=["bgp", "border gateway protocol"],
         rules=rules,
-        citations=[
-            rfc_4271_bgp,
-            rfc_4271_timers,
-            rfc_4271_transport,
-            rfc_5082_gtsm,
-            rfc_7454_policy,
-            rfc_7454_prefix,
-            rfc_7454_dampening,
-            rfc_7454_load,
-        ],
     )
 
 
