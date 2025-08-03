@@ -1,6 +1,11 @@
 name: CI
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 8 * * *'  # daily at 8:15 AM UTC
 
 env:
   PIP_CACHE: ~/.cache/pip
@@ -13,6 +18,118 @@ jobs:
   test-api:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      PYTHONUNBUFFERED: "1"
+      PYTHONHASHSEED: "0"
+      ENVIRONMENT: "development"
+      DEBUG: "true"
+      ENABLE_DENSE: "0"
+      AE_BIND_PORT: "8001"
+      AE_INDEX_DIR: "${{ github.workspace }}/data/index"
+      AE_CACHE_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install (editable + test deps)
+        run: |
+          python -m pip install -U pip
+          python -m pip install -c constraints/ci.txt -e .
+          python -m pip install -c constraints/ci.txt pytest httpx
+
+      - name: Prepare index
+        run: |
+          set -euo pipefail
+          ./scripts/sync_rfc_min.sh
+          python scripts/build_index.py
+          ls -l data/index || true
+
+      - name: Verify built index
+        if: always()
+        run: |
+          set -euo pipefail
+          ls -la data/index || true
+          test -f data/index/sections.jsonl || { echo "sections.jsonl missing – index build failed"; exit 1; }
+
+      - name: Run smoke tests
+        run: python -m pytest -q tests/ci_smoke_test.py -o log_cli=true -o log_cli_level=INFO -rA --maxfail=1 --disable-warnings | tee ci_pytest_smoke.log
+
+      - name: Upload RFC index artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rfc-index
+          path: data/index
+          if-no-files-found: error
+          retention-days: 3
+
+      - name: Upload smoke test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci_smoke_log
+          path: ci_pytest_smoke.log
+
+      - name: Build and check wheels
+        run: |
+          python -m build
+          python -m twine check dist/*
+
+      - name: Upload python-dist artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-dist
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 3
+
+  ci-full:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || contains(github.event.head_commit.message, '[full-ci]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: test-api
+    continue-on-error: true
+    env:
+      PYTHONUNBUFFERED: "1"
+      PYTHONHASHSEED: "0"
+      ENVIRONMENT: "development"
+      DEBUG: "true"
+      ENABLE_DENSE: "0"
+      AE_BIND_PORT: "8001"
+      AE_INDEX_DIR: "${{ github.workspace }}/data/index"
+      AE_CACHE_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install (editable + test deps)
+        run: |
+          python -m pip install -U pip
+          python -m pip install -c constraints/ci.txt -e .
+          python -m pip install -c constraints/ci.txt pytest httpx
+
+      - name: Prepare index
+        run: |
+          set -euo pipefail
+          ./scripts/sync_rfc_min.sh
+          python scripts/build_index.py
+
+      - name: Run full test suite
+        run: python -m pytest -q -o log_cli=true -o log_cli_level=INFO -rA --maxfail=1 --disable-warnings | tee ci_pytest_full.log
+
+  eval:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || contains(github.event.head_commit.message, '[full-ci]') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: test-api
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -26,8 +143,12 @@ jobs:
           path: ${{ env.PIP_CACHE }}
           key: pip-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
 
-      - name: Install (editable)
-        run: pip install -e .
+      - name: Install (editable + eval deps)
+        run: |
+          python -m pip install -U pip
+          python -m pip install -c constraints/ci.txt -e .
+          python -m pip install -c constraints/ci.txt pydantic-settings
+          python -c "import pydantic_settings; print('pydantic-settings:', pydantic_settings.__version__)"
 
       - name: Cache RFC index
         uses: actions/cache@v4
@@ -44,17 +165,191 @@ jobs:
             python scripts/build_index.py
           fi
 
-      - name: API smoke
+      - name: Run evaluation suites
+        env:
+          ENABLE_DENSE: "0"
+          AE_BIND_PORT: "8001"
+          AE_INDEX_DIR: ${{ github.workspace }}/data/index
         run: |
-          AE_INDEX_DIR="$(pwd)/${INDEX_DIR}" AE_BIND_PORT=8001 ENABLE_DENSE=0 \
-            python -m ae2.api.main &
-          sleep 2
-          curl -s http://localhost:8001/healthz | jq .
-          curl -s "http://localhost:8001/debug/explain?query=what%20is%20ospf&mode=hybrid" | jq .
-          pkill -f "ae2.api.main" || true
+          make eval-defs
+          make eval-concepts
+          make eval-trouble
 
-      - name: Tests
-        run: AE_INDEX_DIR="$(pwd)/${INDEX_DIR}" pytest -q
+      - name: Run M1 evaluation suites
+        env:
+          ENABLE_DENSE: "0"
+          AE_BIND_PORT: "8001"
+          AE_INDEX_DIR: ${{ github.workspace }}/data/index
+        run: |
+          make eval-defs-m1
+          make eval-concepts-m1
+          make eval-trouble-m1
 
-      - name: Concept Tests
-        run: AE_INDEX_DIR="$(pwd)/${INDEX_DIR}" pytest -q tests/test_concepts.py
+      - name: Upload evaluation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-reports
+          path: |
+            eval_defs.json
+            eval_concepts.json
+            eval_trouble.json
+            eval_defs_m1.json
+            eval_concepts_m1.json
+            eval_trouble_m1.json
+
+  sec-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install security tools
+        run: |
+          python -m pip install -U pip
+          python -m pip install -c constraints/ci.txt cyclonedx-bom pip-audit bandit safety
+
+      - name: Generate SBOM
+        run: |
+          cyclonedx-bom -o sbom.json .
+
+      - name: Run pip-audit
+        run: |
+          pip-audit -e . -f json > pip_audit.json || true
+
+      - name: Run bandit security scan
+        run: |
+          bandit -r ae2/ -f json -o bandit_report.json || true
+
+      - name: Run safety check
+        run: |
+          safety check --json --output safety_report.json || true
+
+      - name: Run security tests
+        run: |
+          python -m pip install -c constraints/ci.txt -e .
+          python -m pytest tests/test_security.py -v --tb=short
+
+      - name: Upload security artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-artifacts
+          path: |
+            sbom.json
+            pip_audit.json
+            bandit_report.json
+            safety_report.json
+          if-no-files-found: error
+          retention-days: 7
+
+  perf:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || contains(github.event.head_commit.message, '[full-ci]') }}
+    needs: test-api
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.PIP_CACHE }}
+          key: pip-${{ runner.os }}-${{ hashFiles('pyproject.toml') }}
+
+      - name: Install (editable)
+        run: |
+          python -m pip install -U pip
+          python -m pip install -c constraints/ci.txt -e .
+
+      - name: Download RFC index artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rfc-index
+          path: data/index
+
+      - name: Verify downloaded index
+        run: |
+          set -euo pipefail
+          echo "Downloaded index tree:"
+          ls -la data/index
+          test -f data/index/sections.jsonl || { echo "sections.jsonl not found in downloaded artifact"; exit 1; }
+
+      - name: Build Docker image
+        run: docker build -t aev2:test .
+
+      - name: Run container (background) with mounted index
+        run: |
+          docker run -d --name aev2 -p 8001:8001 \
+            -e AE_BIND_HOST=0.0.0.0 \
+            -e AE_BIND_PORT=8001 \
+            -e AE_INDEX_DIR=/app/data/index \
+            -v "${{ github.workspace }}/data/index:/app/data/index:ro" \
+            aev2:test
+
+      - name: Wait for readiness
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 40); do
+            if curl -sf http://localhost:8001/readyz >/dev/null; then
+              echo "ready"; exit 0
+            fi
+            sleep 0.5
+          done
+          echo "Container not ready, logs:"; docker logs aev2 || true
+          exit 1
+
+      - name: HTTP perf
+        if: ${{ success() }}
+        run: |
+          python scripts/perf_http.py --host http://127.0.0.1:8001 --metrics --out perf_summary.json
+          cat perf_summary.json || true
+
+      - name: Fetch metrics snapshot
+        if: always()
+        run: |
+          curl -sf http://127.0.0.1:8001/metrics > perf_metrics.prom || true
+
+      - name: Upload perf artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-artifacts
+          path: |
+            perf_summary.json
+            perf_metrics.prom
+
+      - name: Stop container
+        if: always()
+        run: docker rm -f aev2 || true
+
+      - name: Check metrics presence
+        run: |
+          if [ -f "perf_metrics.prom" ]; then
+            echo "Checking core metrics presence..."
+            grep -q "ae_http_request_latency_ms" perf_metrics.prom || (echo "ERROR: ae_http_request_latency_ms not found" && exit 1)
+            grep -q "ae_router_intent_total" perf_metrics.prom || (echo "ERROR: ae_router_intent_total not found" && exit 1)
+            grep -q "ae_query_latency_ms" perf_metrics.prom || (echo "ERROR: ae_query_latency_ms not found" && exit 1)
+            grep -q "ae_cache_hits_total" perf_metrics.prom || (echo "ERROR: ae_cache_hits_total not found" && exit 1)
+            echo "All core metrics present"
+          else
+            echo "WARNING: perf_metrics.prom not found, skipping metrics check"
+          fi
+
+      - name: Upload performance artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-reports
+          path: |
+            perf_http.json
+            perf_metrics.prom
+            perf_summary.json

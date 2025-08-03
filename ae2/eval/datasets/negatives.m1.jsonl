@@ -1,0 +1,29 @@
+{"id":"N1","query":"what is the weather like","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Weather queries are not networking-related"}}
+{"id":"N2","query":"how to cook pasta","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Cooking queries are not networking-related"}}
+{"id":"N3","query":"","expected":{"intent":"ABSTAIN","reason":"empty_query","explanation":"Empty query provides no context"}}
+{"id":"N4","query":"pizza near me","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Food queries are not networking-related"}}
+{"id":"N5","query":"movie recommendations","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Entertainment queries are not networking-related"}}
+{"id":"N6","query":"stock market today","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Finance queries are not networking-related"}}
+{"id":"N7","query":"what is a computer","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"General computer questions are not networking-specific"}}
+{"id":"N8","query":"how to install windows","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"OS installation is not networking-related"}}
+{"id":"N9","query":"python programming","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Programming questions are not networking-related"}}
+{"id":"N10","query":"database management","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Database topics are not networking-related"}}
+{"id":"N11","query":"web development","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Web development is not networking-related"}}
+{"id":"N12","query":"machine learning","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"ML topics are not networking-related"}}
+{"id":"N13","query":"gym workout plan","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Fitness queries are not networking-related"}}
+{"id":"N14","query":"horoscope today","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Astrology queries are not networking-related"}}
+{"id":"N15","query":"lottery numbers","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Gambling queries are not networking-related"}}
+{"id":"N16","query":"crypto prices","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Cryptocurrency queries are not networking-related"}}
+{"id":"N17","query":"restaurant booking","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Dining queries are not networking-related"}}
+{"id":"N18","query":"travel deals","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Travel queries are not networking-related"}}
+{"id":"N19","query":"netflix shows","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Streaming queries are not networking-related"}}
+{"id":"N20","query":"temperature outside","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Weather queries are not networking-related"}}
+{"id":"N21","query":"recipe for pasta","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Cooking queries are not networking-related"}}
+{"id":"N22","query":"finance tips","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Financial advice queries are not networking-related"}}
+{"id":"N23","query":"movie reviews","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Entertainment queries are not networking-related"}}
+{"id":"N24","query":"booking flights","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Travel booking queries are not networking-related"}}
+{"id":"N25","query":"cooking classes","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Culinary queries are not networking-related"}}
+{"id":"N26","query":"how to code bgp in python","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Programming questions are not networking-related"}}
+{"id":"N27","query":"weather forecast tomorrow","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Weather queries are not networking-related"}}
+{"id":"N28","query":"pizza delivery near me","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Food delivery queries are not networking-related"}}
+{"id":"N29","query":"movie theater showtimes","expected":{"intent":"ABSTAIN","reason":"off_topic","explanation":"Entertainment queries are not networking-related"}}

@@ -1,0 +1,20 @@
+{"id":"T1","query":"iosxe g0/0 ospf neighbor down","ctx":{"vendor":"iosxe","iface":"GigabitEthernet0/0","area":"0.0.0.0"},"expected":{"min_steps":5,"must_include":["neighbor","interface"]}}
+{"id":"T2","query":"junos ge-0/0/0 ospf exstart","ctx":{"vendor":"junos","iface":"ge-0/0/0","area":"0.0.0.0"},"expected":{"must_include":["exstart"]}}
+{"id":"T3","query":"iosxe bgp neighbor down","ctx":{"vendor":"iosxe","neighbor":"192.168.1.1"},"expected":{"min_steps":4,"must_include":["bgp","neighbor"]}}
+{"id":"T4","query":"junos bgp session not established","ctx":{"vendor":"junos","neighbor":"10.0.0.1"},"expected":{"min_steps":4,"must_include":["bgp","session"]}}
+{"id":"T5","query":"iosxe interface g0/0 down","ctx":{"vendor":"iosxe","iface":"GigabitEthernet0/0"},"expected":{"min_steps":3,"must_include":["interface","status"]}}
+{"id":"T6","query":"iosxe bgp peer idle state","ctx":{"vendor":"iosxe","peer":"192.0.2.1","iface":"GigabitEthernet0/0"},"expected":{"min_steps":8,"must_include":["bgp","fsm","state"]}}
+{"id":"T7","query":"junos bgp neighbor active","ctx":{"vendor":"junos","peer":"192.0.2.1","iface":"ge-0/0/0"},"expected":{"min_steps":8,"must_include":["bgp","fsm","state"]}}
+{"id":"T8","query":"iosxe bgp opensent state","ctx":{"vendor":"iosxe","peer":"192.0.2.1"},"expected":{"min_steps":8,"must_include":["bgp","fsm","state"]}}
+{"id":"T9","query":"junos bgp openconfirm","ctx":{"vendor":"junos","peer":"192.0.2.1"},"expected":{"min_steps":8,"must_include":["bgp","fsm","state"]}}
+{"id":"T10","query":"iosxe bgp established flaps","ctx":{"vendor":"iosxe","peer":"192.0.2.1"},"expected":{"min_steps":8,"must_include":["bgp","fsm","state"]}}
+{"id":"T11","query":"junos bgp ttl mismatch","ctx":{"vendor":"junos","peer":"192.0.2.1","ttl":1},"expected":{"min_steps":8,"must_include":["bgp","ttl","multihop"]}}
+{"id":"T12","query":"iosxe bgp multihop issues","ctx":{"vendor":"iosxe","peer":"192.0.2.1","multihop":true},"expected":{"min_steps":8,"must_include":["bgp","ttl","multihop"]}}
+{"id":"T13","query":"junos bgp authentication failed","ctx":{"vendor":"junos","peer":"192.0.2.1","auth":"md5"},"expected":{"min_steps":8,"must_include":["bgp","authentication","md5"]}}
+{"id":"T14","query":"iosxe bgp afi safi mismatch","ctx":{"vendor":"iosxe","peer":"192.0.2.1"},"expected":{"min_steps":8,"must_include":["bgp","afi","safi"]}}
+{"id":"T15","query":"junos bgp timers mismatch","ctx":{"vendor":"junos","peer":"192.0.2.1"},"expected":{"min_steps":8,"must_include":["bgp","timers","keepalive"]}}
+{"id":"T16","query":"iosxe bgp policy blocking","ctx":{"vendor":"iosxe","peer":"192.0.2.1"},"expected":{"min_steps":8,"must_include":["bgp","policy","route"]}}
+{"id":"T17","query":"junos bgp cpu drops","ctx":{"vendor":"junos","peer":"192.0.2.1"},"expected":{"min_steps":8,"must_include":["bgp","fsm","state"]}}
+{"id":"T18","query":"iosxe bgp platform drops","ctx":{"vendor":"iosxe","peer":"192.0.2.1"},"expected":{"min_steps":8,"must_include":["bgp","fsm","state"]}}
+{"id":"T19","query":"junos bgp dampening","ctx":{"vendor":"junos","peer":"192.0.2.1"},"expected":{"min_steps":8,"must_include":["bgp","fsm","state"]}}
+{"id":"T20","query":"iosxe bgp session churn","ctx":{"vendor":"iosxe","peer":"192.0.2.1"},"expected":{"min_steps":8,"must_include":["bgp","fsm","state"]}}
