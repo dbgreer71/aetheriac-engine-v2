@@ -87,6 +87,22 @@ def test_bgp_endpoint_smoke(app_client):
     ), "Step hash should be deterministic across runs"
 
 
+def test_debug_route_abstain(app_client):
+    """Test GET /debug/route with off-topic query."""
+    # Set environment to disable auth for testing
+    import os
+
+    os.environ["AE_DISABLE_AUTH"] = "true"
+
+    response = app_client.get("/debug/route?query=what is the weather")
+    assert response.status_code == 200
+    body = response.json()
+    assert "intent" in body
+    assert body["intent"] == "ABSTAIN"
+    assert "notes" in body
+    assert "Off-topic query" in body["notes"]
+
+
 def test_debug_route_bgp(app_client):
     """Test GET /debug/route with BGP query."""
     # Set environment to disable auth for testing
@@ -101,6 +117,8 @@ def test_debug_route_bgp(app_client):
     assert body["intent"] == "TROUBLESHOOT"
     assert "target" in body
     assert body["target"] == "bgp-neighbor-down"
+    assert "notes" in body
+    assert "reasons" in body["notes"] or "BGP troubleshooting detected" in body["notes"]
 
 
 def test_auto_bgp_route_smoke(app_client):
