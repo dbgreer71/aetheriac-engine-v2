@@ -117,11 +117,24 @@ def assemble(
             }
 
         elif decision.intent == "TROUBLESHOOT":
+            # Extract evidence from decision notes
+            decision_evidence = None
+            if hasattr(decision.notes, "get"):
+                decision_evidence = decision.notes
+            elif isinstance(decision.notes, str) and decision.notes.startswith("{"):
+                try:
+                    import ast
+
+                    decision_evidence = ast.literal_eval(decision.notes)
+                except (ValueError, SyntaxError):
+                    pass
+
             result = assemble_playbook(
                 target_slug=decision.target,
                 query=query,
                 store=stores["index_store"],
                 context=params,
+                decision_evidence=decision_evidence,
             )
 
             if "error" in result:

@@ -26,6 +26,66 @@ except ImportError:
     CACHE_AVAILABLE = False
 
 
+@dataclass(frozen=True)
+class MatchEvidence:
+    """Evidence for a routing match with deterministic scoring."""
+
+    tokens: Dict[str, int]  # e.g., {"bgp": 2, "neighbor": 1, "down": 1}
+    rules: List[str]  # e.g., ["bgp_auto_vendor", "bgp_auto_state"]
+    ranked_reasons: List[str]  # ordered human text reasons
+    score: float  # 0..1
+
+
+PROTO_WEIGHTS = {
+    "bgp": 1.0,
+    "tcp": 0.9,
+    "ospf": 0.95,
+    "neighbor": 0.35,
+    "down": 0.25,
+    "idle": 0.2,
+    "2-way": 0.2,
+    "syn": 0.2,
+    "vendor": 0.4,
+    "peer": 0.2,
+    "iface": 0.2,
+    "port": 0.15,
+    "area": 0.15,
+}
+
+TIEBREAK_ORDER = [
+    "vendor",
+    "protocol",
+    "state",
+    "ip",
+    "iface",
+    "port",
+    "area",
+    "keyword_count",
+]
+
+
+def compute_score(tokens: Dict[str, int], tiebreak: Dict[str, int]) -> float:
+    """Compute deterministic score from tokens and tiebreak data."""
+    raw = sum(PROTO_WEIGHTS.get(k, 0.1) * v for k, v in tokens.items())
+    # deterministic clamp & normalize
+    return min(1.0, round(raw / 4.0, 4))
+
+
+def rank_reasons(
+    tokens: Dict[str, int], rules: List[str], tiebreak: Dict[str, int]
+) -> List[str]:
+    """Generate ranked reasons for routing decision."""
+    tb = [f"{k}={tiebreak.get(k,0)}" for k in TIEBREAK_ORDER]
+    hits = [
+        f"{k}:{v}" for k, v in sorted(tokens.items(), key=lambda kv: (-kv[1], kv[0]))
+    ]
+    return [
+        f"rules:{'|'.join(rules)}",
+        f"hits:{','.join(hits)}",
+        f"tiebreak:{','.join(tb)}",
+    ]
+
+
 @dataclass
 class TroubleshootCandidate:
     """Candidate for troubleshooting routing."""
@@ -51,7 +111,7 @@ class RouteDecision:
     target: str  # RFC number, concept slug, or playbook slug
     confidence: float  # 0.0 to 1.0
     matches: List[str]  # Matched terms/keywords
-    notes: str  # Additional context
+    notes: Any  # Additional context (can be dict or str)
     mode_used: str  # "hybrid", "tfidf", "bm25"
 
 
@@ -283,59 +343,234 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
                 )
             )
 
-        # Detect all protocol candidates
-        candidates = _detect_protocol_candidates(query, vendor)
+        # Build tokens, rules, and tiebreak for each protocol path
+        query_lower = query.lower()
+        candidates = []
 
-        # Apply tie-breakers and sort
-        ranked_candidates = _apply_tie_breakers(candidates)
+        # BGP path
+        bgp_tokens = {}
+        bgp_rules = []
+        bgp_tiebreak = {
+            "vendor": 1 if vendor else 0,
+            "protocol": 0,
+            "state": 0,
+            "ip": 0,
+            "iface": 0,
+            "port": 0,
+            "area": 0,
+            "keyword_count": 0,
+        }
 
-        # Check if any candidate passes minimum score
-        if not ranked_candidates:
+        if any(term in query_lower for term in BGP_TERMS):
+            bgp_tokens["bgp"] = sum(1 for term in BGP_TERMS if term in query_lower)
+            bgp_rules.append("bgp_auto_protocol")
+            bgp_tiebreak["protocol"] = 1
+
+        if "neighbor" in query_lower:
+            bgp_tokens["neighbor"] = query_lower.count("neighbor")
+            bgp_rules.append("bgp_auto_neighbor")
+
+        if any(
+            state in query_lower
+            for state in [
+                "down",
+                "idle",
+                "active",
+                "connect",
+                "opensent",
+                "openconfirm",
+                "established",
+            ]
+        ):
+            bgp_tokens["down"] = query_lower.count("down")
+            bgp_tokens["idle"] = query_lower.count("idle")
+            bgp_rules.append("bgp_auto_state")
+            bgp_tiebreak["state"] = 1
+
+        if vendor:
+            bgp_tokens["vendor"] = 1
+            bgp_rules.append("bgp_auto_vendor")
+
+        # Extract peer IP
+        import re
+
+        ip_pattern = r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b"
+        ips = re.findall(ip_pattern, query)
+        if ips:
+            bgp_tokens["peer"] = 1
+            bgp_rules.append("bgp_auto_peer")
+            bgp_tiebreak["ip"] = 1
+
+        bgp_tiebreak["keyword_count"] = len(bgp_tokens)
+
+        if bgp_tokens:
+            bgp_score = compute_score(bgp_tokens, bgp_tiebreak)
+            bgp_reasons = rank_reasons(bgp_tokens, bgp_rules, bgp_tiebreak)
+            candidates.append(
+                ("bgp-neighbor-down", bgp_score, bgp_tokens, bgp_rules, bgp_reasons)
+            )
+
+        # TCP path
+        tcp_tokens = {}
+        tcp_rules = []
+        tcp_tiebreak = {
+            "vendor": 1 if vendor else 0,
+            "protocol": 0,
+            "state": 0,
+            "ip": 0,
+            "iface": 0,
+            "port": 0,
+            "area": 0,
+            "keyword_count": 0,
+        }
+
+        if any(term in query_lower for term in TCP_TERMS):
+            tcp_tokens["tcp"] = sum(1 for term in TCP_TERMS if term in query_lower)
+            tcp_rules.append("tcp_auto_protocol")
+            tcp_tiebreak["protocol"] = 1
+
+        if any(
+            state in query_lower
+            for state in ["syn", "syn-ack", "timeout", "refused", "reset", "rst"]
+        ):
+            tcp_tokens["syn"] = query_lower.count("syn")
+            tcp_rules.append("tcp_auto_state")
+            tcp_tiebreak["state"] = 1
+
+        if vendor:
+            tcp_tokens["vendor"] = 1
+            tcp_rules.append("tcp_auto_vendor")
+
+        # Extract port
+        port_pattern = r":(\d{1,5})\b"
+        ports = re.findall(port_pattern, query)
+        if ports:
+            tcp_tokens["port"] = 1
+            tcp_rules.append("tcp_auto_port")
+            tcp_tiebreak["port"] = 1
+
+        tcp_tiebreak["keyword_count"] = len(tcp_tokens)
+
+        if tcp_tokens:
+            tcp_score = compute_score(tcp_tokens, tcp_tiebreak)
+            tcp_reasons = rank_reasons(tcp_tokens, tcp_rules, tcp_tiebreak)
+            candidates.append(
+                ("tcp-handshake", tcp_score, tcp_tokens, tcp_rules, tcp_reasons)
+            )
+
+        # OSPF path
+        ospf_tokens = {}
+        ospf_rules = []
+        ospf_tiebreak = {
+            "vendor": 1 if vendor else 0,
+            "protocol": 0,
+            "state": 0,
+            "ip": 0,
+            "iface": 0,
+            "port": 0,
+            "area": 0,
+            "keyword_count": 0,
+        }
+
+        if any(term in query_lower for term in OSPF_TERMS):
+            ospf_tokens["ospf"] = sum(1 for term in OSPF_TERMS if term in query_lower)
+            ospf_rules.append("ospf_auto_protocol")
+            ospf_tiebreak["protocol"] = 1
+
+        if "neighbor" in query_lower:
+            ospf_tokens["neighbor"] = query_lower.count("neighbor")
+            ospf_rules.append("ospf_auto_neighbor")
+
+        if any(
+            state in query_lower
+            for state in ["down", "2-way", "exstart", "loading", "full"]
+        ):
+            ospf_tokens["2-way"] = query_lower.count("2-way")
+            ospf_tokens["down"] = query_lower.count("down")
+            ospf_rules.append("ospf_auto_state")
+            ospf_tiebreak["state"] = 1
+
+        if vendor:
+            ospf_tokens["vendor"] = 1
+            ospf_rules.append("ospf_auto_vendor")
+
+        # Extract interface
+        interface_patterns = [
+            r"\b(g0/\d+|GigabitEthernet\d+/\d+)\b",
+            r"\b(ge-\d+/\d+/\d+|xe-\d+/\d+/\d+)\b",
+            r"\b(Ethernet\d+/\d+)\b",
+        ]
+        for pattern in interface_patterns:
+            interfaces = re.findall(pattern, query)
+            if interfaces:
+                ospf_tokens["iface"] = 1
+                ospf_rules.append("ospf_auto_iface")
+                ospf_tiebreak["iface"] = 1
+                break
+
+        # Extract area
+        area_pattern = r"\barea\s+([0-9.]+)\b"
+        areas = re.findall(area_pattern, query)
+        if areas:
+            ospf_tokens["area"] = 1
+            ospf_rules.append("ospf_auto_area")
+            ospf_tiebreak["area"] = 1
+
+        ospf_tiebreak["keyword_count"] = len(ospf_tokens)
+
+        if ospf_tokens:
+            ospf_score = compute_score(ospf_tokens, ospf_tiebreak)
+            ospf_reasons = rank_reasons(ospf_tokens, ospf_rules, ospf_tiebreak)
+            candidates.append(
+                (
+                    "ospf-neighbor-down",
+                    ospf_score,
+                    ospf_tokens,
+                    ospf_rules,
+                    ospf_reasons,
+                )
+            )
+
+        # Deterministic tie-breaks: higher score, then lexicographic target, then longest rules list
+        if candidates:
+            candidates.sort(key=lambda x: (-x[1], x[0], -len(x[3])))
+            winner_target, winner_score, winner_tokens, winner_rules, winner_reasons = (
+                candidates[0]
+            )
+
+            # Store evidence in notes
+            notes_data = {
+                "ranked_reasons": winner_reasons,
+                "matches": winner_tokens,
+                "rules": winner_rules,
+                "confidence": winner_score,
+                "candidates": [
+                    {"target": target, "score": score, "rules": rules}
+                    for target, score, _, rules, _ in candidates[:3]
+                ],
+            }
+
+            return _cache_and_return(
+                RouteDecision(
+                    intent="TROUBLESHOOT",
+                    target=winner_target,
+                    confidence=winner_score,
+                    matches=troubleshoot_matches + list(winner_tokens.keys()),
+                    notes=notes_data,
+                    mode_used="hybrid",
+                )
+            )
+        else:
             return _cache_and_return(
                 RouteDecision(
                     intent="ABSTAIN",
                     target="",
                     confidence=0.1,
                     matches=troubleshoot_matches,
-                    notes=f"No protocol candidates found with sufficient score. Query: {query}",
+                    notes=f"No protocol candidates found. Query: {query}",
                     mode_used="hybrid",
                 )
             )
-
-        # Select winner (highest ranked)
-        winner = ranked_candidates[0]
-
-        # Prepare notes with ranking information
-        ranked_info = []
-        for i, candidate in enumerate(ranked_candidates[:3]):  # Cap to last 3
-            ranked_info.append(
-                {
-                    "target": candidate.target,
-                    "score": candidate.score,
-                    "reasons": candidate.reasons[
-                        :3
-                    ],  # Cap reasons to keep logs compact
-                }
-            )
-
-        notes_data = {
-            "ranked": ranked_info,
-            "winner": winner.target,
-            "reasons": winner.reasons[:3],  # Cap reasons to keep logs compact
-        }
-
-        return _cache_and_return(
-            RouteDecision(
-                intent="TROUBLESHOOT",
-                target=winner.target,
-                confidence=get_confidence_score(
-                    troubleshoot_matches + winner.reasons, "TROUBLESHOOT"
-                ),
-                matches=troubleshoot_matches + winner.reasons,
-                notes=str(notes_data),  # Convert to string for compatibility
-                mode_used="hybrid",
-            )
-        )
 
     # Check for concept intent
     is_concept, concept_matches = extract_concept_terms(query)

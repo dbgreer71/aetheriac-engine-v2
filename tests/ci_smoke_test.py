@@ -239,3 +239,40 @@ def test_step_hash_stable_auto(client):
     h1 = client.post("/query?mode=auto", json={"query": q}).json()["step_hash"]
     h2 = client.post("/query?mode=auto", json={"query": q}).json()["step_hash"]
     assert h1 == h2
+
+
+def test_debug_route_reasons(client):
+    """Test debug route endpoint returns ranked reasons."""
+    r = client.get(
+        "/debug/route", params={"query": "iosxe bgp neighbor down 192.0.2.1"}
+    )
+    body = r.json()
+    assert r.status_code == 200
+    assert body["intent"] == "TROUBLESHOOT"
+    assert body["target"] in {
+        "bgp-neighbor-down",
+        "tcp-handshake",
+        "ospf-neighbor-down",
+    }
+    assert 0.5 <= body["confidence"] <= 1.0
+    reasons = body["notes"].get("ranked_reasons", [])
+    assert reasons and all(isinstance(x, str) for x in reasons)
+
+
+def test_insufficient_steps_guard(client):
+    """Test that insufficient steps returns proper error without 500."""
+    # Use a query that should route to troubleshooting but with minimal tokens
+    # This should trigger the insufficient steps guard in the playbook assembler
+    q = "ospf neighbor down"
+    r = client.post("/query?mode=auto", json={"query": q})
+    assert r.status_code == 200
+    body = r.json()
+    # This should either succeed or return insufficient_steps, but not 500
+    if "error" in body:
+        assert body["error"] == "insufficient_steps"
+        assert "steps_count" in body
+        assert "evidence" in body
+    else:
+        # If it succeeds, it should have a valid response
+        assert body["intent"] == "TROUBLESHOOT"
+        assert "step_hash" in body

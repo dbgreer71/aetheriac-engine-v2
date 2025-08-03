@@ -252,4 +252,4 @@ For issues not covered in this guide:
 1. Check the main README.md
 2. Review existing issues and PRs
 3. Create a new issue with detailed information
-4. Contact the maintainers through the project channels 
+4. Contact the maintainers through the project channels

@@ -67,7 +67,11 @@ def compute_steps_hash(steps: List[Dict[str, Any]]) -> str:
 
 
 def assemble_playbook(
-    target_slug: str, query: str, store: IndexStore, context: Dict[str, Any] = None
+    target_slug: str,
+    query: str,
+    store: IndexStore,
+    context: Dict[str, Any] = None,
+    decision_evidence: Dict[str, Any] = None,
 ) -> Dict[str, Any]:
     """
     Assemble a playbook response by executing the playbook.
@@ -124,10 +128,18 @@ def assemble_playbook(
         # Guard against insufficient steps
         if len(steps_dict) < 3:
             return {
+                "intent": "TROUBLESHOOT",
                 "error": "insufficient_steps",
                 "steps_count": len(steps_dict),
-                "source_slug": target_slug,
+                "target": target_slug,
                 "vendor": play_context.vendor,
+                "evidence": decision_evidence
+                or {
+                    "ranked_reasons": [],
+                    "matches": {},
+                    "rules": [],
+                    "confidence": 0.0,
+                },
             }
 
         return {
