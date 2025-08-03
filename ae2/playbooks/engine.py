@@ -122,6 +122,182 @@ def create_ospf_neighbor_playbook() -> Playbook:
     )
 
 
+def create_bgp_neighbor_playbook() -> Playbook:
+    """Create the BGP neighbor-down troubleshooting playbook."""
+
+    # RFC 4271 citations for BGP neighbor states and troubleshooting
+    rfc_4271_neighbor_states = RFCSectionRef(
+        rfc=4271,
+        section="8.2.2",
+        title="BGP Finite State Machine",
+        url="https://tools.ietf.org/html/rfc4271#section-8.2.2",
+    )
+
+    rfc_4271_opensent = RFCSectionRef(
+        rfc=4271,
+        section="8.2.2",
+        title="OpenSent State",
+        url="https://tools.ietf.org/html/rfc4271#section-8.2.2",
+    )
+
+    rules = [
+        Rule(
+            id="check_bgp_neighbor_state",
+            if_="BGP neighbor is down or not established",
+            then_check="Check BGP neighbor state and session status",
+            then_fix=None,
+            verify="Verify neighbor appears in BGP table",
+            citations=[rfc_4271_neighbor_states],
+        ),
+        Rule(
+            id="check_interface_status",
+            if_="BGP neighbor not found in routing table",
+            then_check="Verify interface is up and configured for BGP",
+            then_fix=None,
+            verify="Interface should be up/up and BGP enabled",
+            citations=[rfc_4271_neighbor_states],
+        ),
+        Rule(
+            id="check_bgp_configuration",
+            if_="Interface is up but BGP session not established",
+            then_check="Verify BGP neighbor configuration and AS number",
+            then_fix=None,
+            verify="BGP neighbor should be configured with correct AS",
+            citations=[rfc_4271_neighbor_states],
+        ),
+        Rule(
+            id="check_opensent_state",
+            if_="BGP neighbor stuck in OpenSent state",
+            then_check="Check for BGP Open message issues",
+            then_fix="Verify BGP parameters match on both sides",
+            verify="BGP Open messages should be accepted",
+            citations=[rfc_4271_opensent],
+        ),
+        Rule(
+            id="check_authentication",
+            if_="BGP authentication mismatch suspected",
+            then_check="Verify BGP authentication configuration",
+            then_fix="Configure matching authentication on both sides",
+            verify="Authentication should be consistent",
+            citations=[rfc_4271_neighbor_states],
+        ),
+        Rule(
+            id="check_bgp_process",
+            if_="BGP process not running",
+            then_check="Verify BGP process is active and configured",
+            then_fix="Enable BGP process if not running",
+            verify="BGP process should be active",
+            citations=[rfc_4271_neighbor_states],
+        ),
+        Rule(
+            id="check_route_policies",
+            if_="BGP routes not being advertised",
+            then_check="Verify BGP route policies and filters",
+            then_fix="Configure appropriate route policies",
+            verify="Routes should be advertised correctly",
+            citations=[rfc_4271_neighbor_states],
+        ),
+        Rule(
+            id="check_connectivity",
+            if_="BGP session cannot be established",
+            then_check="Verify network connectivity to BGP peer",
+            then_fix="Resolve network connectivity issues",
+            verify="Network should be reachable",
+            citations=[rfc_4271_neighbor_states],
+        ),
+    ]
+
+    return Playbook(id="bgp-neighbor-down", applies_to=["BGP", "routing"], rules=rules)
+
+
+def create_tcp_handshake_playbook() -> Playbook:
+    """Create the TCP handshake troubleshooting playbook."""
+
+    # RFC 9293 citations for TCP handshake and troubleshooting
+    rfc_9293_handshake = RFCSectionRef(
+        rfc=9293,
+        section="3.4",
+        title="Establishing a connection",
+        url="https://tools.ietf.org/html/rfc9293#section-3.4",
+    )
+
+    rfc_9293_syn = RFCSectionRef(
+        rfc=9293,
+        section="3.4.1",
+        title="Three-Way Handshake",
+        url="https://tools.ietf.org/html/rfc9293#section-3.4.1",
+    )
+
+    rules = [
+        Rule(
+            id="check_connectivity",
+            if_="TCP connection cannot be established",
+            then_check="Verify basic network connectivity",
+            then_fix=None,
+            verify="Network should be reachable",
+            citations=[rfc_9293_handshake],
+        ),
+        Rule(
+            id="check_syn_timeout",
+            if_="SYN timeout or no response",
+            then_check="Check if destination is listening on port",
+            then_fix="Verify service is running on destination port",
+            verify="SYN-ACK should be received",
+            citations=[rfc_9293_syn],
+        ),
+        Rule(
+            id="check_port_filtering",
+            if_="Connection refused or port filtered",
+            then_check="Verify firewall and port filtering rules",
+            then_fix="Configure firewall to allow traffic",
+            verify="Port should be accessible",
+            citations=[rfc_9293_handshake],
+        ),
+        Rule(
+            id="check_mss_issues",
+            if_="MSS issues or PMTUD problems",
+            then_check="Check for MTU and MSS configuration",
+            then_fix="Configure appropriate MSS values",
+            verify="MSS should be negotiated correctly",
+            citations=[rfc_9293_handshake],
+        ),
+        Rule(
+            id="check_rst_response",
+            if_="RST received during handshake",
+            then_check="Check if service is rejecting connections",
+            then_fix="Verify service configuration",
+            verify="Service should accept connections",
+            citations=[rfc_9293_syn],
+        ),
+        Rule(
+            id="check_blackhole",
+            if_="Traffic appears to be blackholed",
+            then_check="Check for routing issues or packet drops",
+            then_fix="Resolve routing or forwarding issues",
+            verify="Packets should be forwarded correctly",
+            citations=[rfc_9293_handshake],
+        ),
+        Rule(
+            id="check_interface_status",
+            if_="Interface issues affecting connectivity",
+            then_check="Verify interface status and configuration",
+            then_fix="Resolve interface issues",
+            verify="Interface should be operational",
+            citations=[rfc_9293_handshake],
+        ),
+        Rule(
+            id="check_application",
+            if_="Application-level connection issues",
+            then_check="Verify application is listening and configured",
+            then_fix="Start or configure application correctly",
+            verify="Application should accept connections",
+            citations=[rfc_9293_handshake],
+        ),
+    ]
+
+    return Playbook(id="tcp-handshake", applies_to=["TCP", "connectivity"], rules=rules)
+
+
 def run_playbook(slug: str, ctx: PlayContext, store: IndexStore) -> PlayResult:
     """Run a playbook with the given context and return deterministic results."""
 
@@ -161,6 +337,7 @@ def _generate_commands_for_rule(rule: Rule, ctx: PlayContext) -> List[str]:
 
     # Map rule IDs to command intents
     rule_commands = {
+        # OSPF commands
         "check_neighbor_state": ["show_neighbors"],
         "check_interface_status": ["show_iface"],
         "check_ospf_interface_config": ["show_ospf_iface"],
@@ -169,6 +346,20 @@ def _generate_commands_for_rule(rule: Rule, ctx: PlayContext) -> List[str]:
         "check_ospf_process": ["show_ospf_process"],
         "check_network_type": ["show_ospf_iface"],
         "check_hello_dead_intervals": ["show_ospf_iface"],
+        # BGP commands
+        "check_bgp_neighbor_state": ["show_bgp_neighbors"],
+        "check_bgp_configuration": ["show_bgp_config"],
+        "check_opensent_state": ["show_bgp_neighbors"],
+        "check_bgp_process": ["show_bgp_process"],
+        "check_route_policies": ["show_route_policies"],
+        "check_connectivity": ["ping", "traceroute"],
+        # TCP commands
+        "check_syn_timeout": ["telnet", "nc"],
+        "check_port_filtering": ["telnet", "nc"],
+        "check_mss_issues": ["show_mtu"],
+        "check_rst_response": ["telnet", "nc"],
+        "check_blackhole": ["traceroute", "ping"],
+        "check_application": ["show_processes"],
     }
 
     if rule.id in rule_commands:
@@ -183,6 +374,7 @@ def _generate_result_text(rule: Rule, ctx: PlayContext) -> str:
     """Generate result text for a rule based on context."""
 
     result_templates = {
+        # OSPF templates
         "check_neighbor_state": "Check OSPF neighbor table for adjacency status",
         "check_interface_status": f"Verify interface {ctx.iface} is operational",
         "check_ospf_interface_config": f"Check OSPF configuration on {ctx.iface}",
@@ -191,6 +383,20 @@ def _generate_result_text(rule: Rule, ctx: PlayContext) -> str:
         "check_ospf_process": "Verify OSPF process is active",
         "check_network_type": "Ensure network types match on both sides",
         "check_hello_dead_intervals": "Verify hello and dead intervals match",
+        # BGP templates
+        "check_bgp_neighbor_state": "Check BGP neighbor table for session status",
+        "check_bgp_configuration": "Verify BGP neighbor configuration",
+        "check_opensent_state": "Check BGP Open message exchange",
+        "check_bgp_process": "Verify BGP process is active",
+        "check_route_policies": "Check BGP route policies and filters",
+        "check_connectivity": "Verify network connectivity to BGP peer",
+        # TCP templates
+        "check_syn_timeout": "Check if destination is listening on port",
+        "check_port_filtering": "Verify firewall and port filtering rules",
+        "check_mss_issues": "Check for MTU and MSS configuration",
+        "check_rst_response": "Check if service is rejecting connections",
+        "check_blackhole": "Check for routing issues or packet drops",
+        "check_application": "Verify application is listening and configured",
     }
 
     return result_templates.get(rule.id, f"Execute {rule.then_check}")
@@ -199,10 +405,14 @@ def _generate_result_text(rule: Rule, ctx: PlayContext) -> str:
 def get_playbook_explanation(slug: str, vendor: str) -> Dict[str, Any]:
     """Get explanation of a playbook's rules and commands."""
 
-    if slug != "ospf-neighbor-down":
+    if slug == "ospf-neighbor-down":
+        playbook = create_ospf_neighbor_playbook()
+    elif slug == "bgp-neighbor-down":
+        playbook = create_bgp_neighbor_playbook()
+    elif slug == "tcp-handshake":
+        playbook = create_tcp_handshake_playbook()
+    else:
         raise ValueError(f"Unknown playbook: {slug}")
-
-    playbook = create_ospf_neighbor_playbook()
 
     explanation = {"playbook_id": playbook.id, "vendor": vendor, "rules": []}
 
