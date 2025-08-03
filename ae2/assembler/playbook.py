@@ -121,6 +121,15 @@ def assemble_playbook(
         # Compute deterministic step hash
         step_hash = compute_steps_hash(steps_dict)
 
+        # Guard against insufficient steps
+        if len(steps_dict) < 3:
+            return {
+                "error": "insufficient_steps",
+                "steps_count": len(steps_dict),
+                "source_slug": target_slug,
+                "vendor": play_context.vendor,
+            }
+
         return {
             "steps": steps_dict,
             "citations": all_citations,
@@ -129,6 +138,11 @@ def assemble_playbook(
             "vendor": play_context.vendor,
             "playbook_id": result.playbook_id,
             "step_hash": step_hash,
+            "deterministic": True,
+            "provenance": {
+                "playbook": target_slug,
+                "rules": [step.get("rule_id", "") for step in steps_dict],
+            },
         }
 
     except Exception as e:

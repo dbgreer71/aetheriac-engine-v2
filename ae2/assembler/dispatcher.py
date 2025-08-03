@@ -125,6 +125,25 @@ def assemble(
             )
 
             if "error" in result:
+                # Handle insufficient steps error
+                if result["error"] == "insufficient_steps":
+                    return {
+                        "intent": "TROUBLESHOOT",
+                        "route": {
+                            "target": decision.target,
+                            "evidence": {
+                                "matched_terms": decision.matches,
+                                "confidence": decision.confidence,
+                                "notes": decision.notes,
+                            },
+                        },
+                        "error": "insufficient_steps",
+                        "steps_count": result.get("steps_count", 0),
+                        "citations": [],
+                        "confidence": 0.0,
+                        "processing_time_ms": (time.time() - start_time) * 1000,
+                    }
+
                 return {
                     "intent": "TROUBLESHOOT",
                     "route": {
@@ -141,6 +160,26 @@ def assemble(
                     "processing_time_ms": (time.time() - start_time) * 1000,
                 }
 
+            # Ensure minimum steps requirement
+            steps = result.get("steps", [])
+            if len(steps) < 8:
+                return {
+                    "intent": "TROUBLESHOOT",
+                    "route": {
+                        "target": decision.target,
+                        "evidence": {
+                            "matched_terms": decision.matches,
+                            "confidence": decision.confidence,
+                            "notes": decision.notes,
+                        },
+                    },
+                    "error": "insufficient_steps",
+                    "steps_count": len(steps),
+                    "citations": result.get("citations", []),
+                    "confidence": result.get("confidence", 0.0),
+                    "processing_time_ms": (time.time() - start_time) * 1000,
+                }
+
             return {
                 "intent": "TROUBLESHOOT",
                 "route": {
@@ -151,10 +190,12 @@ def assemble(
                         "notes": decision.notes,
                     },
                 },
-                "steps": result.get("steps", []),
+                "steps": steps,
                 "step_hash": result.get("step_hash", ""),
                 "citations": result.get("citations", []),
                 "confidence": result.get("confidence", 0.0),
+                "deterministic": result.get("deterministic", True),
+                "provenance": result.get("provenance", {}),
                 "processing_time_ms": (time.time() - start_time) * 1000,
             }
 
