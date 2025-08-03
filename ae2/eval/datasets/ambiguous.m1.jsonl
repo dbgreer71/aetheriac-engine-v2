@@ -18,3 +18,22 @@
 {"id":"A18","query":"bgp configuration","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP configuration could be setup guide or troubleshooting"}}
 {"id":"A19","query":"bgp setup","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP setup could be initial configuration or troubleshooting"}}
 {"id":"A20","query":"bgp guide","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"BGP guide could be educational or troubleshooting"}}
+{"id":"A21","query":"router","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Router is too ambiguous - could be network router, wood router, etc."}}
+{"id":"A22","query":"protocol","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Protocol is too ambiguous - could be any networking protocol"}}
+{"id":"A23","query":"connection","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Connection is too ambiguous - could be database, network, etc."}}
+{"id":"A24","query":"cloud computing","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Cloud computing is too broad and ambiguous"}}
+{"id":"A25","query":"security","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Security is too ambiguous - could be network, physical, etc."}}
+{"id":"A26","query":"performance","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Performance is too ambiguous - could be any system performance"}}
+{"id":"A27","query":"monitoring","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Monitoring is too ambiguous - could be any type of monitoring"}}
+{"id":"A28","query":"configuration","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Configuration is too ambiguous - could be any system config"}}
+{"id":"A29","query":"troubleshooting","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Troubleshooting is too ambiguous - could be for any system"}}
+{"id":"A30","query":"best practices","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Best practices is too ambiguous - could be for any domain"}}
+{"id":"A31","query":"documentation","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Documentation is too ambiguous - could be for any system"}}
+{"id":"A32","query":"training","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Training is too ambiguous - could be any type of training"}}
+{"id":"A33","query":"certification","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Certification is too ambiguous - could be any certification"}}
+{"id":"A34","query":"vendor","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Vendor is too ambiguous - could be any vendor"}}
+{"id":"A35","query":"hardware","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Hardware is too ambiguous - could be any hardware"}}
+{"id":"A36","query":"software","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Software is too ambiguous - could be any software"}}
+{"id":"A37","query":"config bgp from scratch","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Configuration tutorials are not troubleshooting-specific"}}
+{"id":"A38","query":"bgp for beginners","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Educational content requests are not troubleshooting-specific"}}
+{"id":"A39","query":"bgp explained simply","expected":{"intent":"ABSTAIN","reason":"ambiguous","explanation":"Explanation requests are not troubleshooting-specific"}}
