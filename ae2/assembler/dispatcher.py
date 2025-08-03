@@ -180,39 +180,35 @@ def assemble(
                     "processing_time_ms": (time.time() - start_time) * 1000,
                 }
 
-                # Parse notes if it's a string representation of a dict
-                notes = decision.notes
-                if (
-                    isinstance(notes, str)
-                    and notes.startswith("{")
-                    and notes.endswith("}")
-                ):
-                    try:
-                        import ast
+            # Parse notes if it's a string representation of a dict
+            notes = decision.notes
+            if isinstance(notes, str) and notes.startswith("{") and notes.endswith("}"):
+                try:
+                    import ast
 
-                        notes = ast.literal_eval(notes)
-                    except (ValueError, SyntaxError):
-                        pass  # Keep as string if parsing fails
+                    notes = ast.literal_eval(notes)
+                except (ValueError, SyntaxError):
+                    pass  # Keep as string if parsing fails
 
-                return {
-                    "intent": "TROUBLESHOOT",
-                    "route": {
-                        "target": decision.target,
-                        "evidence": {
-                            "matched_terms": decision.matches,
-                            "confidence": decision.confidence,
-                            "notes": notes,
-                        },
+            return {
+                "intent": "TROUBLESHOOT",
+                "route": {
+                    "target": decision.target,
+                    "evidence": {
+                        "matched_terms": decision.matches,
+                        "confidence": decision.confidence,
+                        "notes": notes,
                     },
-                    "notes": notes,  # Add notes at top level for tests
-                    "steps": steps,
-                    "step_hash": result.get("step_hash", ""),
-                    "citations": result.get("citations", []),
-                    "confidence": result.get("confidence", 0.0),
-                    "deterministic": result.get("deterministic", True),
-                    "provenance": result.get("provenance", {}),
-                    "processing_time_ms": (time.time() - start_time) * 1000,
-                }
+                },
+                "notes": notes,  # Add notes at top level for tests
+                "steps": steps,
+                "step_hash": result.get("step_hash", ""),
+                "citations": result.get("citations", []),
+                "confidence": result.get("confidence", 0.0),
+                "deterministic": result.get("deterministic", True),
+                "provenance": result.get("provenance", {}),
+                "processing_time_ms": (time.time() - start_time) * 1000,
+            }
 
         else:
             return {
