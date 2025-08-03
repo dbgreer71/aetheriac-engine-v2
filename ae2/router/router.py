@@ -5,15 +5,16 @@ This module provides deterministic routing logic to choose between
 definition, concept, or troubleshooting paths based on query analysis.
 """
 
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 from .lexicon import (
     extract_troubleshoot_terms,
     extract_concept_terms,
     find_canonical_rfc,
-    find_playbook_slug,
     get_confidence_score,
     OSPF_TERMS,
+    BGP_TERMS,
+    TCP_TERMS,
 )
 
 # Import cache if available
@@ -26,6 +27,23 @@ except ImportError:
 
 
 @dataclass
+class TroubleshootCandidate:
+    """Candidate for troubleshooting routing."""
+
+    intent: str = "TROUBLESHOOT"
+    target: str = ""
+    score: int = 0
+    reasons: List[str] = None
+    features: Dict[str, Any] = None
+
+    def __post_init__(self):
+        if self.reasons is None:
+            self.reasons = []
+        if self.features is None:
+            self.features = {}
+
+
+@dataclass
 class RouteDecision:
     """Result of query routing decision."""
 
@@ -35,6 +53,186 @@ class RouteDecision:
     matches: List[str]  # Matched terms/keywords
     notes: str  # Additional context
     mode_used: str  # "hybrid", "tfidf", "bm25"
+
+
+def _extract_protocol_features(query: str, vendor: Optional[str]) -> Dict[str, Any]:
+    """Extract protocol-specific features from query."""
+    features = {"vendor": vendor}
+
+    # Extract IP addresses, ports, areas, interfaces
+    import re
+
+    # IP addresses
+    ip_pattern = r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b"
+    ips = re.findall(ip_pattern, query)
+    if ips:
+        features["peer_ip"] = ips[0]
+
+    # Port numbers
+    port_pattern = r":(\d{1,5})\b"
+    ports = re.findall(port_pattern, query)
+    if ports:
+        features["port"] = int(ports[0])
+
+    # Areas (OSPF)
+    area_pattern = r"\barea\s+([0-9.]+)\b"
+    areas = re.findall(area_pattern, query)
+    if areas:
+        features["area"] = areas[0]
+
+    # Interfaces
+    interface_patterns = [
+        r"\b(g0/\d+|GigabitEthernet\d+/\d+)\b",
+        r"\b(ge-\d+/\d+/\d+|xe-\d+/\d+/\d+)\b",
+        r"\b(Ethernet\d+/\d+)\b",
+    ]
+    for pattern in interface_patterns:
+        interfaces = re.findall(pattern, query)
+        if interfaces:
+            features["interface"] = interfaces[0]
+            break
+
+    return features
+
+
+def _calculate_base_score(
+    vendor: Optional[str], protocol_terms: bool, state_terms: bool
+) -> int:
+    """Calculate base score for troubleshooting candidate."""
+    if vendor and protocol_terms and state_terms:
+        return 3  # vendor + protocol + state
+    elif protocol_terms and state_terms:
+        return 2  # protocol + state
+    elif protocol_terms:
+        return 1  # protocol only
+    return 0
+
+
+def _apply_tie_breakers(
+    candidates: List[TroubleshootCandidate],
+) -> List[TroubleshootCandidate]:
+    """Apply tie-breakers to sort candidates by priority."""
+
+    def tie_breaker_score(candidate: TroubleshootCandidate) -> tuple:
+        features = candidate.features
+
+        # Tie-breaker 1: Exact vendor detected
+        vendor_score = 0
+        if features.get("vendor") in ["iosxe", "junos", "nxos"]:
+            vendor_score = 1
+
+        # Tie-breaker 2: Presence of relevant tokens
+        token_score = 0
+        if (
+            features.get("peer_ip")
+            or features.get("port")
+            or features.get("area")
+            or features.get("interface")
+        ):
+            token_score = 1
+
+        # Tie-breaker 3: Fewer abstain triggers (inverse - higher is better)
+        # This is handled by the base score already
+
+        return (-candidate.score, -vendor_score, -token_score)
+
+    return sorted(candidates, key=tie_breaker_score)
+
+
+def _detect_protocol_candidates(
+    query: str, vendor: Optional[str]
+) -> List[TroubleshootCandidate]:
+    """Detect all protocol candidates from query."""
+    query_lower = query.lower()
+    candidates = []
+
+    # Extract features once
+    features = _extract_protocol_features(query, vendor)
+
+    # BGP detection
+    bgp_terms_present = any(term in query_lower for term in BGP_TERMS)
+    bgp_state_terms = any(
+        term in query_lower
+        for term in [
+            "down",
+            "not established",
+            "opensent",
+            "openconfirm",
+            "active",
+            "idle",
+        ]
+    )
+
+    if bgp_terms_present:
+        base_score = _calculate_base_score(vendor, bgp_terms_present, bgp_state_terms)
+        if base_score >= 1:
+            candidate = TroubleshootCandidate(
+                target="bgp-neighbor-down",
+                score=base_score,
+                reasons=["bgp_terms"]
+                + (["bgp_state_terms"] if bgp_state_terms else []),
+                features=features.copy(),
+            )
+            candidates.append(candidate)
+
+    # OSPF detection
+    ospf_terms_present = any(term in query_lower for term in OSPF_TERMS)
+    ospf_state_terms = any(
+        term in query_lower
+        for term in [
+            "down",
+            "not full",
+            "stuck",
+            "2-way",
+            "init",
+            "exstart",
+            "loading",
+            "dead",
+        ]
+    )
+
+    if ospf_terms_present:
+        base_score = _calculate_base_score(vendor, ospf_terms_present, ospf_state_terms)
+        if base_score >= 1:
+            candidate = TroubleshootCandidate(
+                target="ospf-neighbor-down",
+                score=base_score,
+                reasons=["ospf_terms"]
+                + (["ospf_state_terms"] if ospf_state_terms else []),
+                features=features.copy(),
+            )
+            candidates.append(candidate)
+
+    # TCP detection
+    tcp_terms_present = any(term in query_lower for term in TCP_TERMS)
+    tcp_state_terms = any(
+        term in query_lower
+        for term in [
+            "timeout",
+            "refused",
+            "reset",
+            "rst",
+            "syn",
+            "syn-ack",
+            "blackhole",
+            "mss",
+            "pmtud",
+        ]
+    )
+
+    if tcp_terms_present:
+        base_score = _calculate_base_score(vendor, tcp_terms_present, tcp_state_terms)
+        if base_score >= 1:
+            candidate = TroubleshootCandidate(
+                target="tcp-handshake",
+                score=base_score,
+                reasons=["tcp_terms"]
+                + (["tcp_state_terms"] if tcp_state_terms else []),
+                features=features.copy(),
+            )
+            candidates.append(candidate)
+
+    return candidates
 
 
 def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
@@ -55,8 +253,6 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
         if cached_result is not None:
             return cached_result
 
-    query_lower = query.lower()
-
     def _cache_and_return(decision: RouteDecision) -> RouteDecision:
         """Cache the decision and return it."""
         if CACHE_AVAILABLE:
@@ -67,130 +263,76 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
     # Check for troubleshooting intent first (highest priority)
     is_troubleshoot, troubleshoot_matches, vendor = extract_troubleshoot_terms(query)
 
-    # Special handling for OSPF neighbor-down queries - prefer TROUBLESHOOT
-    ospf_terms_present = any(term in query_lower for term in OSPF_TERMS)
-    ospf_state_terms_present = any(
-        term in query_lower
-        for term in [
-            "down",
-            "not full",
-            "stuck",
-            "2-way",
-            "init",
-            "exstart",
-            "loading",
-            "dead",
-        ]
-    )
-
-    if ospf_terms_present and ospf_state_terms_present:
-        playbook_slug, playbook_matches = find_playbook_slug(query)
-        all_matches = troubleshoot_matches + playbook_matches + ["ospf"]
-        reasons = ["ospf+state_terms"]
-
-        # Validate vendor for troubleshooting
-        allowed_vendors = ["iosxe", "junos"]  # TODO: make configurable
-
-        # Normalize vendor name
-        if vendor == "ios" or vendor == "cisco":
-            vendor = "iosxe"
-
-        if vendor and vendor not in allowed_vendors:
-            return _cache_and_return(
-                RouteDecision(
-                    intent="DEFINE",
-                    target="2328",  # Default to OSPF RFC
-                    confidence=0.3,
-                    matches=all_matches,
-                    notes=f"OSPF troubleshooting requested but vendor '{vendor}' not supported. Supported: {allowed_vendors}",
-                    mode_used="hybrid",
-                )
-            )
-
-        if vendor:
-            reasons.append(f"vendor:{vendor}")
-
-        return _cache_and_return(
-            RouteDecision(
-                intent="TROUBLESHOOT",
-                target="ospf-neighbor-down",
-                confidence=get_confidence_score(all_matches, "TROUBLESHOOT"),
-                matches=all_matches,
-                notes=f"OSPF troubleshooting detected for ospf-neighbor-down on {vendor if vendor else 'unknown vendor'}. Reasons: {', '.join(reasons)}",
-                mode_used="hybrid",
-            )
-        )
-
-    # Additional OSPF detection: vendor present and ospf present
-    vendor_present = vendor is not None
-    if vendor_present and "ospf" in query_lower:
-        playbook_slug, playbook_matches = find_playbook_slug(query)
-        all_matches = troubleshoot_matches + playbook_matches + ["ospf", vendor]
-        reasons = ["ospf+vendor"]
-
-        # Validate vendor for troubleshooting
-        allowed_vendors = ["iosxe", "junos"]  # TODO: make configurable
-
-        # Normalize vendor name
-        if vendor == "ios" or vendor == "cisco":
-            vendor = "iosxe"
-
-        if vendor not in allowed_vendors:
-            return _cache_and_return(
-                RouteDecision(
-                    intent="DEFINE",
-                    target="2328",  # Default to OSPF RFC
-                    confidence=0.3,
-                    matches=all_matches,
-                    notes=f"OSPF troubleshooting requested but vendor '{vendor}' not supported. Supported: {allowed_vendors}",
-                    mode_used="hybrid",
-                )
-            )
-
-        reasons.append(f"vendor:{vendor}")
-
-        return _cache_and_return(
-            RouteDecision(
-                intent="TROUBLESHOOT",
-                target="ospf-neighbor-down",
-                confidence=get_confidence_score(all_matches, "TROUBLESHOOT"),
-                matches=all_matches,
-                notes=f"OSPF troubleshooting detected for ospf-neighbor-down on {vendor}. Reasons: {', '.join(reasons)}",
-                mode_used="hybrid",
-            )
-        )
-
+    # Multi-protocol ranking for troubleshooting
     if is_troubleshoot:
-        playbook_slug, playbook_matches = find_playbook_slug(query)
-        all_matches = troubleshoot_matches + playbook_matches
-
-        # Validate vendor for troubleshooting
-        allowed_vendors = ["iosxe", "junos"]  # TODO: make configurable
-
         # Normalize vendor name
         if vendor == "ios" or vendor == "cisco":
             vendor = "iosxe"
 
+        # Validate vendor for troubleshooting
+        allowed_vendors = ["iosxe", "junos"]  # TODO: make configurable
         if vendor and vendor not in allowed_vendors:
             return _cache_and_return(
                 RouteDecision(
                     intent="DEFINE",
                     target="2328",  # Default to OSPF RFC
                     confidence=0.3,
-                    matches=all_matches,
+                    matches=troubleshoot_matches,
                     notes=f"Troubleshooting requested but vendor '{vendor}' not supported. Supported: {allowed_vendors}",
                     mode_used="hybrid",
                 )
             )
 
+        # Detect all protocol candidates
+        candidates = _detect_protocol_candidates(query, vendor)
+
+        # Apply tie-breakers and sort
+        ranked_candidates = _apply_tie_breakers(candidates)
+
+        # Check if any candidate passes minimum score
+        if not ranked_candidates:
+            return _cache_and_return(
+                RouteDecision(
+                    intent="ABSTAIN",
+                    target="",
+                    confidence=0.1,
+                    matches=troubleshoot_matches,
+                    notes=f"No protocol candidates found with sufficient score. Query: {query}",
+                    mode_used="hybrid",
+                )
+            )
+
+        # Select winner (highest ranked)
+        winner = ranked_candidates[0]
+
+        # Prepare notes with ranking information
+        ranked_info = []
+        for i, candidate in enumerate(ranked_candidates[:3]):  # Cap to last 3
+            ranked_info.append(
+                {
+                    "target": candidate.target,
+                    "score": candidate.score,
+                    "reasons": candidate.reasons[
+                        :3
+                    ],  # Cap reasons to keep logs compact
+                }
+            )
+
+        notes_data = {
+            "ranked": ranked_info,
+            "winner": winner.target,
+            "reasons": winner.reasons[:3],  # Cap reasons to keep logs compact
+        }
+
         return _cache_and_return(
             RouteDecision(
                 intent="TROUBLESHOOT",
-                target=playbook_slug,
-                confidence=get_confidence_score(all_matches, "TROUBLESHOOT"),
-                matches=all_matches,
-                notes=f"Troubleshooting detected for {playbook_slug}"
-                + (f" on {vendor}" if vendor else ""),
+                target=winner.target,
+                confidence=get_confidence_score(
+                    troubleshoot_matches + winner.reasons, "TROUBLESHOOT"
+                ),
+                matches=troubleshoot_matches + winner.reasons,
+                notes=str(notes_data),  # Convert to string for compatibility
                 mode_used="hybrid",
             )
         )
@@ -204,7 +346,7 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
             # Extract potential concept name from query
             potential_concepts = ["arp", "ospf", "bgp", "tcp", "ip", "default route"]
             for concept in potential_concepts:
-                if concept in query_lower:
+                if concept in query.lower():
                     # Check if concept card exists
                     try:
                         concept_store.load(f"concept:{concept}:v1")

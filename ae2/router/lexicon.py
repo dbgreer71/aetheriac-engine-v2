@@ -69,6 +69,43 @@ OSPF_TERMS: Set[str] = {
     "loading",
 }
 
+# BGP-specific terms for neighbor issue detection
+BGP_TERMS: Set[str] = {
+    "bgp",
+    "border gateway protocol",
+    "neighbor",
+    "peer",
+    "session",
+    "route",
+    "as",
+    "autonomous system",
+    "opensent",
+    "openconfirm",
+    "established",
+    "idle",
+    "active",
+    "connect",
+}
+
+# TCP-specific terms for handshake issue detection
+TCP_TERMS: Set[str] = {
+    "tcp",
+    "syn",
+    "syn-ack",
+    "handshake",
+    "three way",
+    "3-way",
+    "reset",
+    "rst",
+    "timeout",
+    "refused",
+    "connection refused",
+    "mss",
+    "pmtud",
+    "mtu blackhole",
+    "blackhole",
+}
+
 # Vendor keywords for troubleshooting
 VENDOR_KEYWORDS: Set[str] = {
     "iosxe",
