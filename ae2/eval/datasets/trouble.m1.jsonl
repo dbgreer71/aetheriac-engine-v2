@@ -1,0 +1,40 @@
+{"id":"T1","query":"iosxe g0/0 ospf neighbor down","ctx":{"vendor":"iosxe","iface":"GigabitEthernet0/0","area":"0.0.0.0"},"expected":{"min_steps":8,"must_include":["neighbor","interface"]}}
+{"id":"T2","query":"junos ge-0/0/0 ospf exstart","ctx":{"vendor":"junos","iface":"ge-0/0/0","area":"0.0.0.0"},"expected":{"min_steps":8,"must_include":["exstart"]}}
+{"id":"T3","query":"iosxe bgp neighbor down","ctx":{"vendor":"iosxe","neighbor":"192.168.1.1"},"expected":{"min_steps":8,"must_include":["bgp","neighbor"]}}
+{"id":"T4","query":"junos bgp session not established","ctx":{"vendor":"junos","neighbor":"10.0.0.1"},"expected":{"min_steps":8,"must_include":["bgp","session"]}}
+{"id":"T5","query":"iosxe interface g0/0 down","ctx":{"vendor":"iosxe","iface":"GigabitEthernet0/0"},"expected":{"min_steps":8,"must_include":["interface","status"]}}
+{"id":"T6","query":"junos interface xe-0/0/0 down","ctx":{"vendor":"junos","iface":"xe-0/0/0"},"expected":{"min_steps":8,"must_include":["interface","status"]}}
+{"id":"T7","query":"iosxe tcp connection refused 203.0.113.10:443","ctx":{"vendor":"iosxe","dst":"203.0.113.10","dport":443},"expected":{"min_steps":8,"must_include":["tcp","connection"]}}
+{"id":"T8","query":"junos tcp syn timeout 198.51.100.5:80","ctx":{"vendor":"junos","dst":"198.51.100.5","dport":80},"expected":{"min_steps":8,"must_include":["tcp","timeout"]}}
+{"id":"T9","query":"iosxe tcp mss blackhole 192.0.2.1:22","ctx":{"vendor":"iosxe","dst":"192.0.2.1","dport":22},"expected":{"min_steps":8,"must_include":["tcp","mss"]}}
+{"id":"T10","query":"junos tcp pmtud failure 203.0.113.15:8080","ctx":{"vendor":"junos","dst":"203.0.113.15","dport":8080},"expected":{"min_steps":8,"must_include":["tcp","pmtud"]}}
+{"id":"T11","query":"iosxe tcp handshake reset 198.51.100.10:443","ctx":{"vendor":"iosxe","dst":"198.51.100.10","dport":443},"expected":{"min_steps":8,"must_include":["tcp","reset"]}}
+{"id":"T12","query":"junos tcp three way handshake timeout 192.0.2.5:80","ctx":{"vendor":"junos","dst":"192.0.2.5","dport":80},"expected":{"min_steps":8,"must_include":["tcp","handshake"]}}
+{"id":"T13","query":"iosxe tcp syn-ack not received 203.0.113.20:22","ctx":{"vendor":"iosxe","dst":"203.0.113.20","dport":22},"expected":{"min_steps":8,"must_include":["tcp","syn-ack"]}}
+{"id":"T14","query":"junos tcp connection refused 198.51.100.15:443","ctx":{"vendor":"junos","dst":"198.51.100.15","dport":443},"expected":{"min_steps":8,"must_include":["tcp","refused"]}}
+{"id":"T15","query":"iosxe tcp mtu blackhole 192.0.2.10:8080","ctx":{"vendor":"iosxe","dst":"192.0.2.10","dport":8080},"expected":{"min_steps":8,"must_include":["tcp","mtu"]}}
+{"id":"T16","query":"junos tcp blackhole 203.0.113.25:80","ctx":{"vendor":"junos","dst":"203.0.113.25","dport":80},"expected":{"min_steps":8,"must_include":["tcp","blackhole"]}}
+{"id":"T17","query":"iosxe tcp handshake failed 198.51.100.20:443","ctx":{"vendor":"iosxe","dst":"198.51.100.20","dport":443},"expected":{"min_steps":8,"must_include":["tcp","handshake"]}}
+{"id":"T18","query":"junos tcp connection timeout 192.0.2.15:22","ctx":{"vendor":"junos","dst":"192.0.2.15","dport":22},"expected":{"min_steps":8,"must_include":["tcp","timeout"]}}
+{"id":"T19","query":"iosxe tcp syn timeout 203.0.113.30:80","ctx":{"vendor":"iosxe","dst":"203.0.113.30","dport":80},"expected":{"min_steps":8,"must_include":["tcp","syn"]}}
+{"id":"T20","query":"junos tcp rst received 198.51.100.25:443","ctx":{"vendor":"junos","dst":"198.51.100.25","dport":443},"expected":{"min_steps":8,"must_include":["tcp","rst"]}}
+{"id":"T21","query":"iosxe tcp syn timeout 203.0.113.10:443","ctx":{"vendor":"iosxe","dst":"203.0.113.10","dport":443},"expected":{"min_steps":8,"must_include":["tcp","syn"]}}
+{"id":"T22","query":"junos tcp connection refused 198.51.100.5:80","ctx":{"vendor":"junos","dst":"198.51.100.5","dport":80},"expected":{"min_steps":8,"must_include":["tcp","refused"]}}
+{"id":"T23","query":"iosxe tcp mss blackhole 192.0.2.1:22","ctx":{"vendor":"iosxe","dst":"192.0.2.1","dport":22},"expected":{"min_steps":8,"must_include":["tcp","mss"]}}
+{"id":"T24","query":"junos tcp pmtud failure 203.0.113.15:8080","ctx":{"vendor":"junos","dst":"203.0.113.15","dport":8080},"expected":{"min_steps":8,"must_include":["tcp","pmtud"]}}
+{"id":"T25","query":"iosxe tcp handshake reset 198.51.100.10:443","ctx":{"vendor":"iosxe","dst":"198.51.100.10","dport":443},"expected":{"min_steps":8,"must_include":["tcp","reset"]}}
+{"id":"T26","query":"junos tcp three way handshake timeout 192.0.2.5:80","ctx":{"vendor":"junos","dst":"192.0.2.5","dport":80},"expected":{"min_steps":8,"must_include":["tcp","handshake"]}}
+{"id":"T27","query":"iosxe tcp syn-ack not received 203.0.113.20:22","ctx":{"vendor":"iosxe","dst":"203.0.113.20","dport":22},"expected":{"min_steps":8,"must_include":["tcp","syn-ack"]}}
+{"id":"T28","query":"junos tcp connection refused 198.51.100.15:443","ctx":{"vendor":"junos","dst":"198.51.100.15","dport":443},"expected":{"min_steps":8,"must_include":["tcp","refused"]}}
+{"id":"T29","query":"iosxe tcp mtu blackhole 192.0.2.10:8080","ctx":{"vendor":"iosxe","dst":"192.0.2.10","dport":8080},"expected":{"min_steps":8,"must_include":["tcp","mtu"]}}
+{"id":"T30","query":"junos tcp blackhole 203.0.113.25:80","ctx":{"vendor":"junos","dst":"203.0.113.25","dport":80},"expected":{"min_steps":8,"must_include":["tcp","blackhole"]}}
+{"id":"T31","query":"iosxe g0/0 ospf neighbor stuck in 2-way","ctx":{"vendor":"iosxe","iface":"GigabitEthernet0/0","area":"0.0.0.0"},"expected":{"min_steps":8,"must_include":["2-way","dr","bdr"]}}
+{"id":"T32","query":"junos ge-0/0/0 ospf dead timer mismatch","ctx":{"vendor":"junos","iface":"ge-0/0/0","area":"0.0.0.0"},"expected":{"min_steps":8,"must_include":["dead timer","hello"]}}
+{"id":"T33","query":"iosxe g0/1 ospf mtu mismatch exstart","ctx":{"vendor":"iosxe","iface":"GigabitEthernet0/1","area":"0.0.0.0"},"expected":{"min_steps":8,"must_include":["mtu","exstart"]}}
+{"id":"T34","query":"junos xe-0/0/1 ospf area mismatch","ctx":{"vendor":"junos","iface":"xe-0/0/1","area":"1.1.1.1"},"expected":{"min_steps":8,"must_include":["area","mismatch"]}}
+{"id":"T35","query":"iosxe g0/2 ospf network type mismatch p2p broadcast","ctx":{"vendor":"iosxe","iface":"GigabitEthernet0/2","area":"0.0.0.0"},"expected":{"min_steps":8,"must_include":["network type","p2p","broadcast"]}}
+{"id":"T36","query":"junos ge-0/0/2 ospf auth mismatch md5 clear","ctx":{"vendor":"junos","iface":"ge-0/0/2","area":"0.0.0.0"},"expected":{"min_steps":8,"must_include":["auth","md5","clear"]}}
+{"id":"T37","query":"iosxe g0/3 ospf passive interface","ctx":{"vendor":"iosxe","iface":"GigabitEthernet0/3","area":"0.0.0.0"},"expected":{"min_steps":8,"must_include":["passive","interface"]}}
+{"id":"T38","query":"junos xe-0/0/3 ospf lsa flood issues","ctx":{"vendor":"junos","iface":"xe-0/0/3","area":"0.0.0.0"},"expected":{"min_steps":8,"must_include":["lsa","flood"]}}
+{"id":"T39","query":"iosxe g0/4 ospf neighbor loading state","ctx":{"vendor":"iosxe","iface":"GigabitEthernet0/4","area":"0.0.0.0"},"expected":{"min_steps":8,"must_include":["loading","state"]}}
+{"id":"T40","query":"junos ge-0/0/4 ospf designated router election","ctx":{"vendor":"junos","iface":"ge-0/0/4","area":"0.0.0.0"},"expected":{"min_steps":8,"must_include":["designated router","election"]}}
