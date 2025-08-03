@@ -78,6 +78,11 @@ OSPF_TERMS: Set[str] = {
     "2-way",
     "exstart",
     "loading",
+    "storm",
+    "flood",
+    "retransmit",
+    "max-lsa",
+    "throttle",
 }
 
 # BGP-specific terms for neighbor issue detection
@@ -95,6 +100,10 @@ BGP_TERMS: Set[str] = {
     "idle",
     "active",
     "connect",
+    "flap",
+    "flapping",
+    "churn",
+    "dampening",
 }
 
 # TCP-specific terms for handshake issue detection
@@ -239,6 +248,9 @@ PLAYBOOK_SLUG_MAP: Dict[str, str] = {
     "ospf neighbor down": "ospf-neighbor-down",
     "ospf stuck": "ospf-neighbor-down",
     "ospf exstart": "ospf-neighbor-down",
+    "ospf lsa storm": "ospf-lsa-storm",
+    "ospf storm": "ospf-lsa-storm",
+    "lsa storm": "ospf-lsa-storm",
     "lacp": "lacp-port-channel-down",
     "etherchannel": "lacp-port-channel-down",
     "port-channel": "lacp-port-channel-down",
@@ -249,6 +261,11 @@ PLAYBOOK_SLUG_MAP: Dict[str, str] = {
     "gratuitous arp": "arp-anomalies",
     "proxy-arp": "arp-anomalies",
     "dai": "arp-anomalies",
+    "bgp": "bgp-flap",
+    "bgp flap": "bgp-flap",
+    "bgp flapping": "bgp-flap",
+    "bgp churn": "bgp-flap",
+    "bgp dampening": "bgp-flap",
 }
 
 

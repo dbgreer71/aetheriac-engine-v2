@@ -829,6 +829,90 @@ def troubleshoot_arp_anomalies(ctx: PlayContext):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/troubleshoot/bgp-flap")
+def troubleshoot_bgp_flap(ctx: PlayContext):
+    """Execute BGP flap troubleshooting playbook."""
+    if store is None:
+        raise HTTPException(status_code=500, detail="Index store not initialized")
+
+    try:
+        # Use assembler for consistent behavior and step hash
+        from ae2.assembler.playbook import assemble_playbook
+
+        # Create context dict from PlayContext
+        context = {
+            "vendor": ctx.vendor,
+            "iface": ctx.iface,
+            "area": ctx.area,
+            "auth": ctx.auth,
+            "mtu": ctx.mtu,
+        }
+
+        result = assemble_playbook("bgp-flap", "", store, context)
+
+        response = {
+            "playbook_id": result.get("playbook_id", "bgp-flap"),
+            "steps": result.get("steps", []),
+            "step_hash": result.get("step_hash", ""),
+            "debug": {
+                "matched_rules": len(result.get("steps", [])),
+                "vendor": ctx.vendor,
+                "iface": ctx.iface,
+                "area": ctx.area,
+            },
+        }
+
+        # Add assumptions if present
+        if "assumptions" in result:
+            response["assumptions"] = result["assumptions"]
+
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/troubleshoot/ospf-lsa-storm")
+def troubleshoot_ospf_lsa_storm(ctx: PlayContext):
+    """Execute OSPF LSA storm troubleshooting playbook."""
+    if store is None:
+        raise HTTPException(status_code=500, detail="Index store not initialized")
+
+    try:
+        # Use assembler for consistent behavior and step hash
+        from ae2.assembler.playbook import assemble_playbook
+
+        # Create context dict from PlayContext
+        context = {
+            "vendor": ctx.vendor,
+            "iface": ctx.iface,
+            "area": ctx.area,
+            "auth": ctx.auth,
+            "mtu": ctx.mtu,
+        }
+
+        result = assemble_playbook("ospf-lsa-storm", "", store, context)
+
+        response = {
+            "playbook_id": result.get("playbook_id", "ospf-lsa-storm"),
+            "steps": result.get("steps", []),
+            "step_hash": result.get("step_hash", ""),
+            "debug": {
+                "matched_rules": len(result.get("steps", [])),
+                "vendor": ctx.vendor,
+                "iface": ctx.iface,
+                "area": ctx.area,
+            },
+        }
+
+        # Add assumptions if present
+        if "assumptions" in result:
+            response["assumptions"] = result["assumptions"]
+
+        return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/debug/explain_playbook")
 def explain_playbook(slug: str = Query(...), vendor: str = Query(...)):
     """Get explanation of a playbook's rules and commands."""

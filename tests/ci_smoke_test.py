@@ -394,3 +394,77 @@ def test_debug_route_arp(client):
     assert "ranked_reasons" in body["notes"]
     assert any("arp" in reason.lower() for reason in body["notes"]["ranked_reasons"])
     assert body["confidence"] >= 0.6
+
+
+def test_bgp_flap_endpoint_smoke(client):
+    """Test BGP flap endpoint returns valid response."""
+    r = client.post(
+        "/troubleshoot/bgp-flap",
+        json={"vendor": "iosxe", "iface": "192.0.2.1", "area": "0.0.0.0"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert "steps" in body and len(body["steps"]) == 8
+    assert "step_hash" in body
+
+
+def test_auto_bgp_flap_route_smoke(client):
+    """Test auto-mode routing to BGP flap playbook."""
+    q = "iosxe bgp neighbor 192.0.2.1 flapping"
+    r = client.post("/query?mode=auto", json={"query": q})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["intent"] == "TROUBLESHOOT"
+    assert body["route"]["target"] == "bgp-flap"
+    assert len(body["steps"]) == 8
+    assert "step_hash" in body
+
+
+def test_debug_route_bgp_flap(client):
+    """Test debug route endpoint for BGP flap queries."""
+    q = "iosxe bgp neighbor flap"
+    r = client.get(f"/debug/route?query={q}")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["intent"] == "TROUBLESHOOT"
+    assert body["target"] == "bgp-flap"
+    assert "ranked_reasons" in body["notes"]
+    assert any("bgp" in reason.lower() for reason in body["notes"]["ranked_reasons"])
+    assert body["confidence"] >= 0.6
+
+
+def test_ospf_lsa_storm_endpoint_smoke(client):
+    """Test OSPF LSA storm endpoint returns valid response."""
+    r = client.post(
+        "/troubleshoot/ospf-lsa-storm",
+        json={"vendor": "iosxe", "iface": "GigabitEthernet0/0", "area": "0.0.0.0"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert "steps" in body and len(body["steps"]) == 8
+    assert "step_hash" in body
+
+
+def test_auto_ospf_lsa_storm_route_smoke(client):
+    """Test auto-mode routing to OSPF LSA storm playbook."""
+    q = "iosxe ospf lsa storm interface g0/0"
+    r = client.post("/query?mode=auto", json={"query": q})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["intent"] == "TROUBLESHOOT"
+    assert body["route"]["target"] == "ospf-lsa-storm"
+    assert len(body["steps"]) == 8
+    assert "step_hash" in body
+
+
+def test_debug_route_ospf_lsa_storm(client):
+    """Test debug route endpoint for OSPF LSA storm queries."""
+    q = "iosxe ospf lsa flood"
+    r = client.get(f"/debug/route?query={q}")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["intent"] == "TROUBLESHOOT"
+    assert body["target"] == "ospf-lsa-storm"
+    assert "ranked_reasons" in body["notes"]
+    assert any("ospf" in reason.lower() for reason in body["notes"]["ranked_reasons"])
+    assert body["confidence"] >= 0.6
