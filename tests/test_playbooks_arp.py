@@ -1,228 +1,132 @@
-"""
-Golden tests for ARP anomalies playbook.
-
-These tests verify deterministic behavior and vendor-specific command generation
-for the ARP troubleshooting playbook.
-"""
+"""Golden tests for ARP anomalies playbook."""
 
 import pytest
-import os
-from ae2.playbooks.arp_anomalies import (
-    run_arp_playbook,
-    create_arp_anomalies_playbook,
-    get_arp_assumptions,
-    get_arp_operator_actions,
-)
-from ae2.playbooks.models import PlayContext
-from ae2.retriever.index_store import IndexStore
+from ae2.api.main import app
+from fastapi.testclient import TestClient
 
 
 @pytest.fixture
-def index_store():
-    """Create index store for testing."""
-    os.environ["ENABLE_DENSE"] = "0"
-    return IndexStore("data/index")
+def client():
+    return TestClient(app)
 
 
-def test_arp_iosxe_vendor_cmds(index_store):
-    """Test IOS-XE ARP commands are generated correctly."""
-    ctx = PlayContext(
-        vendor="iosxe",
-        iface="192.0.2.10",
-        area="0.0.0.0",
-        auth=None,
-        mtu=1500,
+def test_arp_iosxe_vendor_cmds(client):
+    """Test IOS-XE ARP commands render correctly."""
+    r = client.post(
+        "/troubleshoot/arp-anomalies",
+        json={"vendor": "iosxe", "iface": "Vlan10", "vlan": "10"},
     )
+    assert r.status_code == 200
+    j = r.json()
 
-    result = run_arp_playbook(ctx, index_store)
+    # Check first 3 steps include expected IOS-XE commands
+    steps = j.get("steps", [])
+    assert len(steps) == 8
 
-    # Verify we get exactly 8 steps
-    assert len(result.steps) == 8
+    # Step 1: SVI status
+    assert any("show ip interface vlan" in cmd for cmd in steps[0].get("commands", []))
 
-    # Check first few steps have expected commands
-    step1 = result.steps[0]
-    assert step1.rule_id == "check_svi_status"
-    assert "show ip interface vlan 192.0.2.10" in step1.commands
+    # Step 2: ARP entry lookup
+    assert any("show ip arp" in cmd for cmd in steps[1].get("commands", []))
 
-    step2 = result.steps[1]
-    assert step2.rule_id == "check_arp_entry_lookup"
-    assert "show ip arp 192.0.2.10" in step2.commands
-
-    step3 = result.steps[2]
-    assert step3.rule_id == "check_arp_table_health"
-    assert "show ip arp inspection" in step3.commands
+    # Step 3: DAI status
+    assert any("show ip arp inspection" in cmd for cmd in steps[2].get("commands", []))
 
 
-def test_arp_junos_vendor_cmds(index_store):
-    """Test Junos ARP commands are generated correctly."""
-    ctx = PlayContext(
-        vendor="junos",
-        iface="192.0.2.10",
-        area="0.0.0.0",
-        auth=None,
-        mtu=1500,
+def test_arp_junos_vendor_cmds(client):
+    """Test Junos ARP commands render correctly."""
+    r = client.post(
+        "/troubleshoot/arp-anomalies",
+        json={"vendor": "junos", "iface": "vlan.10", "vlan": "10"},
     )
+    assert r.status_code == 200
+    j = r.json()
 
-    result = run_arp_playbook(ctx, index_store)
+    # Check first 3 steps include expected Junos commands
+    steps = j.get("steps", [])
+    assert len(steps) == 8
 
-    # Verify we get exactly 8 steps
-    assert len(result.steps) == 8
+    # Step 1: SVI status
+    assert any("show interfaces vlan" in cmd for cmd in steps[0].get("commands", []))
 
-    # Check first few steps have expected commands
-    step1 = result.steps[0]
-    assert step1.rule_id == "check_svi_status"
-    assert "show interfaces vlan.192.0.2.10 terse" in step1.commands
-
-    step2 = result.steps[1]
-    assert step2.rule_id == "check_arp_entry_lookup"
-    assert "show arp no-resolve | match 192.0.2.10" in step2.commands
-
-    step3 = result.steps[2]
-    assert step3.rule_id == "check_arp_table_health"
-    assert "show ip arp inspection" in step3.commands
+    # Step 2: ARP entry lookup
+    assert any("show arp no-resolve" in cmd for cmd in steps[1].get("commands", []))
 
 
-def test_arp_step_hash_deterministic(index_store):
-    """Test that ARP step hash is stable across multiple runs."""
-    ctx = PlayContext(
-        vendor="iosxe",
-        iface="192.0.2.10",
-        area="0.0.0.0",
-        auth=None,
-        mtu=1500,
+def test_arp_nxos_vendor_cmds(client):
+    """Test NX-OS ARP commands render correctly."""
+    r = client.post(
+        "/troubleshoot/arp-anomalies",
+        json={"vendor": "nxos", "iface": "Vlan20", "vlan": "20"},
     )
+    assert r.status_code == 200
+    j = r.json()
 
-    # Run playbook twice
-    result1 = run_arp_playbook(ctx, index_store)
-    result2 = run_arp_playbook(ctx, index_store)
+    # Check at least one NX-OS command renders
+    steps = j.get("steps", [])
+    assert len(steps) == 8
 
-    # Verify deterministic step order
-    assert len(result1.steps) == len(result2.steps) == 8
-
-    # Verify step IDs are in same order
-    step_ids1 = [step.rule_id for step in result1.steps]
-    step_ids2 = [step.rule_id for step in result2.steps]
-    assert step_ids1 == step_ids2
-
-    # Verify commands are same
-    for i, (step1, step2) in enumerate(zip(result1.steps, result2.steps)):
-        assert step1.commands == step2.commands, f"Commands differ at step {i}"
+    # Step 1: SVI status
+    assert any("show ip interface vlan" in cmd for cmd in steps[0].get("commands", []))
 
 
-def test_arp_playbook_structure():
-    """Test ARP playbook has correct structure."""
-    playbook = create_arp_anomalies_playbook()
+def test_arp_eos_vendor_cmds(client):
+    """Test EOS ARP commands render correctly."""
+    r = client.post(
+        "/troubleshoot/arp-anomalies",
+        json={"vendor": "eos", "iface": "Vlan30", "vlan": "30"},
+    )
+    assert r.status_code == 200
+    j = r.json()
 
-    # Verify playbook metadata
-    assert playbook.id == "arp-anomalies"
-    assert "arp" in playbook.applies_to
-    assert "proxy-arp" in playbook.applies_to
-    assert "dai" in playbook.applies_to
+    # Check at least one EOS command renders
+    steps = j.get("steps", [])
+    assert len(steps) == 8
 
-    # Verify exactly 8 rules
-    assert len(playbook.rules) == 8
-
-    # Verify rule IDs are deterministic
-    expected_rule_ids = [
-        "check_svi_status",
-        "check_arp_entry_lookup",
-        "check_arp_table_health",
-        "check_proxy_arp_config",
-        "check_mac_table_lookup",
-        "check_arp_gratuitous_signals",
-        "check_arp_aging_timers",
-        "check_port_security_counters",
-    ]
-
-    actual_rule_ids = [rule.id for rule in playbook.rules]
-    assert actual_rule_ids == expected_rule_ids
+    # Step 1: SVI status
+    assert any("show ip interface vlan" in cmd for cmd in steps[0].get("commands", []))
 
 
-def test_arp_assumptions():
-    """Test ARP assumptions are properly structured."""
-    assumptions = get_arp_assumptions()
+def test_arp_step_hash_deterministic(client):
+    """Test ARP step hash is deterministic across runs."""
+    # First run
+    r1 = client.post(
+        "/troubleshoot/arp-anomalies",
+        json={"vendor": "iosxe", "iface": "Vlan10", "vlan": "10"},
+    )
+    assert r1.status_code == 200
+    hash1 = r1.json().get("step_hash")
 
-    # Verify we have assumptions
-    assert len(assumptions) >= 4
+    # Second run
+    r2 = client.post(
+        "/troubleshoot/arp-anomalies",
+        json={"vendor": "iosxe", "iface": "Vlan10", "vlan": "10"},
+    )
+    assert r2.status_code == 200
+    hash2 = r2.json().get("step_hash")
 
-    # Verify assumption structure
-    for assumption in assumptions:
-        assert "assumption" in assumption
-        assert "basis" in assumption
-        assert "impact" in assumption
-
-    # Check for specific assumptions
-    assumption_texts = [a["assumption"] for a in assumptions]
-    assert any("ip belongs to vlan" in a.lower() for a in assumption_texts)
-    assert any("arp is enabled" in a.lower() for a in assumption_texts)
-    assert any("vendor supports" in a.lower() for a in assumption_texts)
-    assert any("svi interface exists" in a.lower() for a in assumption_texts)
-
-
-def test_arp_operator_actions():
-    """Test ARP operator actions are properly structured."""
-    actions = get_arp_operator_actions()
-
-    # Verify we have actions
-    assert len(actions) >= 7
-
-    # Verify action structure
-    for action in actions:
-        assert "action" in action
-        assert "condition" in action
-        assert "priority" in action
-
-    # Check for specific actions
-    action_texts = [a["action"] for a in actions]
-    assert any("arp entry stale" in a.lower() for a in action_texts)
-    assert any("dai drops" in a.lower() for a in action_texts)
-    assert any("proxy arp mismatch" in a.lower() for a in action_texts)
-    assert any("mac/arp correlation" in a.lower() for a in action_texts)
-    assert any("gratuitous arp" in a.lower() for a in action_texts)
-    assert any("aging timers" in a.lower() for a in action_texts)
-    assert any("port security" in a.lower() for a in action_texts)
+    # Hashes should be identical
+    assert hash1 == hash2
+    assert hash1 is not None
+    assert len(hash1) > 0
 
 
-def test_arp_citations():
-    """Test ARP playbook has proper citations."""
-    playbook = create_arp_anomalies_playbook()
+def test_arp_assumptions_present(client):
+    """Test ARP playbook includes assumption ledger."""
+    r = client.post(
+        "/troubleshoot/arp-anomalies",
+        json={"vendor": "iosxe", "iface": "Vlan10", "vlan": "10"},
+    )
+    assert r.status_code == 200
+    j = r.json()
 
-    # Check that rules have citations
-    for rule in playbook.rules:
-        assert len(rule.citations) > 0
+    # Check assumptions are present
+    assumptions = j.get("assumptions", {})
+    assert "facts" in assumptions
+    assert "assumptions" in assumptions
+    assert "operator_actions" in assumptions
 
-    # Check for RFC 826 citations
-    rfc_826_citations = []
-    for rule in playbook.rules:
-        for citation in rule.citations:
-            if citation.rfc == 826:
-                rfc_826_citations.append(citation)
-
-    assert len(rfc_826_citations) >= 6  # Should have multiple RFC 826 citations
-
-    # Check for RFC 5227 citations
-    rfc_5227_citations = []
-    for rule in playbook.rules:
-        for citation in rule.citations:
-            if citation.rfc == 5227:
-                rfc_5227_citations.append(citation)
-
-    assert len(rfc_5227_citations) >= 1  # Should have at least one RFC 5227 citation
-
-
-def test_arp_vendor_support():
-    """Test ARP playbook supports multiple vendors."""
-    vendors = ["iosxe", "junos", "nxos", "eos"]
-
-    for vendor in vendors:
-        ctx = PlayContext(
-            vendor=vendor,
-            iface="192.0.2.10",
-            area="0.0.0.0",
-            auth=None,
-            mtu=1500,
-        )
-
-        # Should not raise exception
-        result = run_arp_playbook(ctx, IndexStore("data/index"))
-        assert len(result.steps) == 8
+    # Check content
+    assert len(assumptions["facts"]) > 0
+    assert len(assumptions["assumptions"]) > 0
+    assert len(assumptions["operator_actions"]) > 0

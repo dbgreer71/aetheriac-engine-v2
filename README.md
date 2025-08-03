@@ -202,6 +202,13 @@ Response with debug scores:
 
 The playbook system provides deterministic troubleshooting workflows with vendor-specific commands and RFC citations.
 
+**Available Playbooks**:
+- **BGP neighbor-down**: Session establishment, Open message exchange, route policies
+- **TCP handshake**: Connection establishment, port filtering, MSS/MTU issues
+- **OSPF neighbor-down**: Adjacency formation, interface configuration, authentication
+- **LACP/Port-channel down**: Bundle member status, LACP actor/partner state
+- **ARP anomalies**: SVI status, ARP entry lookup, DAI/inspection, proxy ARP, MAC correlation
+
 #### Execute OSPF Neighbor-Down Playbook
 ```bash
 curl -X POST "http://localhost:8000/troubleshoot/ospf-neighbor" \

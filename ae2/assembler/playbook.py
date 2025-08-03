@@ -142,7 +142,8 @@ def assemble_playbook(
                 },
             }
 
-        return {
+        # Include assumptions if present
+        response = {
             "steps": steps_dict,
             "citations": all_citations,
             "confidence": 0.9,  # High confidence for deterministic playbooks
@@ -156,6 +157,12 @@ def assemble_playbook(
                 "rules": [step.get("rule_id", "") for step in steps_dict],
             },
         }
+
+        # Add assumptions if present in the result
+        if hasattr(result, "assumptions") and result.assumptions:
+            response["assumptions"] = result.assumptions
+
+        return response
 
     except Exception as e:
         return {
@@ -213,6 +220,11 @@ def _create_play_context(query: str, context: Dict[str, Any] = None) -> PlayCont
         ("po1", "Port-channel1"),
         ("bundle-ether1", "Bundle-Ether1"),
         ("ae1", "ae1"),
+        # VLAN patterns
+        ("vlan10", "Vlan10"),
+        ("vlan.10", "vlan.10"),
+        ("irb.10", "irb.10"),
+        ("svi 10", "Vlan10"),
     ]
 
     # Extract IP addresses
@@ -223,8 +235,13 @@ def _create_play_context(query: str, context: Dict[str, Any] = None) -> PlayCont
     if ips:
         iface = ips[0]  # Use first IP found as interface
 
+    # Extract MAC addresses (for ARP)
+    mac_pattern = r"([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}"
+    macs = re.findall(mac_pattern, query_lower)
+    macs[0] if macs else None
+
     # Extract VLAN numbers
-    vlan_pattern = r"\bvlan\s*(\d+)\b"
+    vlan_pattern = r"\bvlan\s?(\d{1,4})\b"
     vlan_match = re.search(vlan_pattern, query_lower)
     if vlan_match:
         vlan = vlan_match.group(1)

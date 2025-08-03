@@ -142,7 +142,23 @@ def run_arp_playbook(ctx: PlayContext, store: IndexStore) -> PlayResult:
         )
         steps.append(step)
 
-    return PlayResult(playbook_id=playbook.id, steps=steps)
+    # Add assumption ledger to the result
+    result = PlayResult(playbook_id=playbook.id, steps=steps)
+    result.assumptions = {
+        "facts": [
+            "Vendor commands are guidance; no device-state claims.",
+            "DAI/Inspection may drop ARP frames if bindings absent.",
+        ],
+        "assumptions": [
+            "User can run show commands on target device.",
+            "If VLAN unspecified, SVI or trunk context applies.",
+        ],
+        "operator_actions": [
+            "Collect outputs from steps 1–3; note MAC/IP/VLAN alignment.",
+            "If DAI drops suspected, verify DHCP Snooping bindings.",
+        ],
+    }
+    return result
 
 
 def get_arp_assumptions() -> List[Dict[str, Any]]:

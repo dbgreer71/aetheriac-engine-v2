@@ -312,9 +312,9 @@ def run_playbook(slug: str, ctx: PlayContext, store: IndexStore) -> PlayResult:
 
         playbook = create_lacp_port_channel_playbook()
     elif slug == "arp-anomalies":
-        from .arp_anomalies import create_arp_anomalies_playbook
+        from .arp_anomalies import run_arp_playbook
 
-        playbook = create_arp_anomalies_playbook()
+        return run_arp_playbook(ctx, store)
     else:
         raise ValueError(f"Unknown playbook: {slug}")
     steps = []

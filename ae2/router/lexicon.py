@@ -137,14 +137,33 @@ LACP_TERMS: Set[str] = {
 # ARP-specific terms for ARP anomaly detection
 ARP_TERMS: Set[str] = {
     "arp",
-    "proxy-arp",
     "gratuitous",
-    "incomplete",
+    "garp",
     "duplicate",
+    "dup",
+    "incomplete",
+    "proxy arp",
+    "proxy-arp",
+    "poison",
+    "poisoning",
+    "mac move",
+    "mac-move",
     "dai",
     "inspection",
     "ip arp",
     "arp table",
+}
+
+# ARP state terms for router scoring
+ARP_STATE_TERMS: Set[str] = {
+    "incomplete",
+    "duplicate",
+    "dup",
+    "garp",
+    "poison",
+    "probe",
+    "announce",
+    "defend",
 }
 
 # Vendor keywords for troubleshooting
@@ -225,6 +244,9 @@ PLAYBOOK_SLUG_MAP: Dict[str, str] = {
     "port-channel": "lacp-port-channel-down",
     "ae": "lacp-port-channel-down",
     "arp": "arp-anomalies",
+    "garp": "arp-anomalies",
+    "duplicate arp": "arp-anomalies",
+    "gratuitous arp": "arp-anomalies",
     "proxy-arp": "arp-anomalies",
     "dai": "arp-anomalies",
 }

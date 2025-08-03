@@ -53,3 +53,8 @@
 {"id":"T53","query":"iosxe proxy-arp mismatch interface vlan 30","ctx":{"vendor":"iosxe","iface":"Vlan30"},"expected":{"min_steps":8,"must_include":["proxy-arp","mismatch"],"expected_target":"arp-anomalies"}}
 {"id":"T54","query":"junos duplicate mac address 00:11:22:33:44:55","ctx":{"vendor":"junos","iface":"00:11:22:33:44:55"},"expected":{"min_steps":8,"must_include":["duplicate","mac"],"expected_target":"arp-anomalies"}}
 {"id":"T55","query":"iosxe arp aging timers misaligned vlan 40","ctx":{"vendor":"iosxe","iface":"Vlan40"},"expected":{"min_steps":8,"must_include":["arp","aging"],"expected_target":"arp-anomalies"}}
+{"id":"T56","query":"iosxe arp incomplete 192.0.2.10 vlan 10","ctx":{"vendor":"iosxe","iface":"192.0.2.10"},"expected":{"min_steps":8,"must_include":["arp","incomplete"],"expected_target":"arp-anomalies"}}
+{"id":"T57","query":"junos duplicate arp on vlan.20 for 198.51.100.7","ctx":{"vendor":"junos","iface":"198.51.100.7"},"expected":{"min_steps":8,"must_include":["duplicate","arp"],"expected_target":"arp-anomalies"}}
+{"id":"T58","query":"nxos garp storm vlan 30 bundle Po1","ctx":{"vendor":"nxos","iface":"Po1"},"expected":{"min_steps":8,"must_include":["garp","storm"],"expected_target":"arp-anomalies"}}
+{"id":"T59","query":"eos dai drops suspected on vlan 40","ctx":{"vendor":"eos","iface":"Vlan40"},"expected":{"min_steps":8,"must_include":["dai","drops"],"expected_target":"arp-anomalies"}}
+{"id":"T60","query":"proxy arp misconfig vlan 50","ctx":{"vendor":"iosxe","iface":"Vlan50"},"expected":{"min_steps":8,"must_include":["proxy","arp"],"expected_target":"arp-anomalies"}}

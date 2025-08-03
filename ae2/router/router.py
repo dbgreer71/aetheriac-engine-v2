@@ -90,7 +90,8 @@ PROTO_WEIGHTS = {
     "syn": 0.2,
     "suspend": 0.25,
     "incomplete": 0.25,
-    "duplicate": 0.25,
+    "duplicate": 0.35,
+    "garp": 0.30,
     "state": 0.30,  # for idle/2-way/exstart/syn etc
     "vendor": 0.4,
     "peer": 0.2,
@@ -446,7 +447,7 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
             vendor = "iosxe"
 
         # Validate vendor for troubleshooting
-        allowed_vendors = ["iosxe", "junos"]  # TODO: make configurable
+        allowed_vendors = ["iosxe", "junos", "nxos", "eos"]  # TODO: make configurable
         if vendor and vendor not in allowed_vendors:
             return _cache_and_return(
                 RouteDecision(
@@ -724,7 +725,7 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
             )
 
         # ARP path
-        from .lexicon import ARP_TERMS
+        from .lexicon import ARP_TERMS, ARP_STATE_TERMS
 
         arp_tokens = {}
         arp_rules = []
@@ -744,20 +745,12 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
             arp_rules.append("arp_auto_protocol")
             arp_tiebreak["protocol"] = 1
 
-        if any(
-            state in query_lower
-            for state in [
-                "incomplete",
-                "duplicate",
-                "failed",
-                "poison",
-                "inspection",
-                "drops",
-                "stale",
-            ]
-        ):
+        if any(term in query_lower for term in ARP_STATE_TERMS):
             arp_tokens["incomplete"] = query_lower.count("incomplete")
             arp_tokens["duplicate"] = query_lower.count("duplicate")
+            arp_tokens["garp"] = query_lower.count("garp") + query_lower.count(
+                "gratuitous"
+            )
             arp_rules.append("arp_auto_state")
             arp_tiebreak["state"] = 1
 

@@ -76,6 +76,43 @@ class VendorCommandIR(BaseModel):
             return ["show errdisable recovery"]
         elif self.intent == "show_errdisable_detect":
             return ["show errdisable detect"]
+        # ARP commands
+        elif self.intent == "show_arp_table":
+            ip = self.params.get("ip", "")
+            vlan = self.params.get("vlan", "")
+            if ip:
+                return [f"show ip arp {ip}"]
+            elif vlan:
+                return [f"show ip arp vlan {vlan}"]
+            else:
+                return ["show ip arp"]
+        elif self.intent == "show_dai_status":
+            vlan = self.params.get("vlan", "")
+            if vlan:
+                return [f"show ip arp inspection vlan {vlan}"]
+            else:
+                return ["show ip arp inspection"]
+        elif self.intent == "show_proxy_arp":
+            return ["show running-config | include proxy-arp"]
+        elif self.intent == "show_mac_table":
+            mac = self.params.get("mac", "")
+            vlan = self.params.get("vlan", "")
+            if mac and vlan:
+                return [f"show mac address-table | include {mac} vlan {vlan}"]
+            elif mac:
+                return [f"show mac address-table | include {mac}"]
+            elif vlan:
+                return [f"show mac address-table vlan {vlan}"]
+            else:
+                return ["show mac address-table"]
+        elif self.intent == "show_svi":
+            vlan = self.params.get("vlan", "")
+            return [f"show ip interface vlan {vlan}"]
+        elif self.intent == "show_arp_timers":
+            return ["show running-config | include arp timeout"]
+        elif self.intent == "show_port_security":
+            iface = self.params.get("iface", "")
+            return [f"show port-security interface {iface}"]
         else:
             return [f"# Unknown intent: {self.intent}"]
 
@@ -207,6 +244,42 @@ class VendorCommandIR(BaseModel):
             return ["show errdisable recovery"]
         elif self.intent == "show_errdisable_detect":
             return ["show errdisable detect"]
+        # ARP commands
+        elif self.intent == "show_arp_table":
+            target = self.params.get("target", "")
+            if target:
+                return [f"show ip arp vrf all | inc {target}"]
+            else:
+                return ["show ip arp"]
+        elif self.intent == "show_arp_detail":
+            return ["show ip arp detail"]
+        elif self.intent == "show_mac_table":
+            vlan = self.params.get("vlan", "")
+            if vlan:
+                return [f"show mac address-table | inc {vlan}"]
+            else:
+                return ["show mac address-table"]
+        elif self.intent == "show_dai_status":
+            return ["show ip arp inspection"]
+        elif self.intent == "show_dhcp_snooping":
+            return ["show ip dhcp snooping"]
+        elif self.intent == "show_iface_switchport":
+            iface = self.params.get("iface", "")
+            return [f"show interface {iface} switchport"]
+        elif self.intent == "show_acl_hits":
+            return ["show ip access-lists | include ARP|arp"]
+        elif self.intent == "show_log_arp":
+            return ["show logging | inc ARP|DYNARP|DAI|snoop"]
+        elif self.intent == "show_proxy_arp":
+            return ["show running-config | include proxy-arp"]
+        elif self.intent == "show_svi":
+            vlan = self.params.get("vlan", "")
+            return [f"show ip interface vlan {vlan}"]
+        elif self.intent == "show_arp_timers":
+            return ["show running-config | include arp timeout"]
+        elif self.intent == "show_port_security":
+            iface = self.params.get("iface", "")
+            return [f"show port-security interface {iface}"]
         else:
             return [f"# Unknown intent: {self.intent}"]
 
@@ -254,5 +327,41 @@ class VendorCommandIR(BaseModel):
             return ["show errdisable recovery"]
         elif self.intent == "show_errdisable_detect":
             return ["show errdisable detect"]
+        # ARP commands
+        elif self.intent == "show_arp_table":
+            target = self.params.get("target", "")
+            if target:
+                return [f"show ip arp | include {target}"]
+            else:
+                return ["show ip arp"]
+        elif self.intent == "show_arp_detail":
+            return ["show ip arp detail"]
+        elif self.intent == "show_mac_table":
+            vlan = self.params.get("vlan", "")
+            if vlan:
+                return [f"show mac address-table | include {vlan}"]
+            else:
+                return ["show mac address-table"]
+        elif self.intent == "show_dai_status":
+            return ["show ip arp inspection"]
+        elif self.intent == "show_dhcp_snooping":
+            return ["show ip dhcp snooping"]
+        elif self.intent == "show_iface_switchport":
+            iface = self.params.get("iface", "")
+            return [f"show interfaces {iface} switchport"]
+        elif self.intent == "show_acl_hits":
+            return ["show access-lists | include arp"]
+        elif self.intent == "show_log_arp":
+            return ["show log | include ARP|DAI|snoop"]
+        elif self.intent == "show_proxy_arp":
+            return ["show running-config | include proxy-arp"]
+        elif self.intent == "show_svi":
+            vlan = self.params.get("vlan", "")
+            return [f"show ip interface vlan {vlan}"]
+        elif self.intent == "show_arp_timers":
+            return ["show running-config | include arp timeout"]
+        elif self.intent == "show_port_security":
+            iface = self.params.get("iface", "")
+            return [f"show port-security interface {iface}"]
         else:
             return [f"# Unknown intent: {self.intent}"]

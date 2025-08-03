@@ -83,3 +83,6 @@ class PlayResult(BaseModel):
     created_at: datetime = Field(
         default_factory=datetime.utcnow, description="When this result was created"
     )
+    assumptions: Optional[dict] = Field(
+        None, description="Assumption ledger for the playbook"
+    )

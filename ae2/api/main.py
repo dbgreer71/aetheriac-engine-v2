@@ -808,7 +808,7 @@ def troubleshoot_arp_anomalies(ctx: PlayContext):
 
         result = assemble_playbook("arp-anomalies", "", store, context)
 
-        return {
+        response = {
             "playbook_id": result.get("playbook_id", "arp-anomalies"),
             "steps": result.get("steps", []),
             "step_hash": result.get("step_hash", ""),
@@ -819,6 +819,12 @@ def troubleshoot_arp_anomalies(ctx: PlayContext):
                 "area": ctx.area,
             },
         }
+
+        # Add assumptions if present
+        if "assumptions" in result:
+            response["assumptions"] = result["assumptions"]
+
+        return response
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
