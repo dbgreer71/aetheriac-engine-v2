@@ -15,7 +15,7 @@ def compute_steps_hash(steps: List[PlayResultStep]) -> str:
     Compute a deterministic hash of playbook steps.
 
     The hash is computed over the normalized content of each step:
-    - check command
+    - check command (normalized)
     - command list (sorted and joined)
     - rfc references (sorted and joined)
 
@@ -31,11 +31,13 @@ def compute_steps_hash(steps: List[PlayResultStep]) -> str:
     # Normalize each step's content
     step_contents = []
     for step in steps:
-        # Normalize check command (strip whitespace)
+        # Normalize check command (strip whitespace, collapse spaces)
         check = step.check.strip() if step.check else ""
+        check = " ".join(check.split())  # Collapse multiple spaces
 
-        # Normalize commands (sort and join)
+        # Normalize commands (sort and join, strip whitespace)
         commands = sorted([cmd.strip() for cmd in step.commands if cmd.strip()])
+        commands = [" ".join(cmd.split()) for cmd in commands]  # Collapse spaces
         commands_str = "|".join(commands)
 
         # Normalize RFC references (sort by RFC number and section)
