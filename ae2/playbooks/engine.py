@@ -307,6 +307,14 @@ def run_playbook(slug: str, ctx: PlayContext, store: IndexStore) -> PlayResult:
         playbook = create_bgp_neighbor_playbook()
     elif slug == "tcp-handshake":
         playbook = create_tcp_handshake_playbook()
+    elif slug == "lacp-port-channel-down":
+        from .lacp_port_channel_down import create_lacp_port_channel_playbook
+
+        playbook = create_lacp_port_channel_playbook()
+    elif slug == "arp-anomalies":
+        from .arp_anomalies import create_arp_anomalies_playbook
+
+        playbook = create_arp_anomalies_playbook()
     else:
         raise ValueError(f"Unknown playbook: {slug}")
     steps = []
@@ -360,11 +368,62 @@ def _generate_commands_for_rule(rule: Rule, ctx: PlayContext) -> List[str]:
         "check_rst_response": ["telnet", "nc"],
         "check_blackhole": ["traceroute", "ping"],
         "check_application": ["show_processes"],
+        # LACP commands
+        "check_bundle_members_status": [
+            "show_etherchannel_summary",
+            "show_port_channel",
+        ],
+        "check_lacp_actor_partner_state": [
+            "show_lacp_neighbor",
+            "show_lacp_interfaces",
+        ],
+        "check_lacp_key_system_priority": [
+            "show_lacp_neighbor",
+            "show_lacp_interfaces",
+        ],
+        "check_admin_mode_mismatch": [
+            "show_lacp_interfaces",
+            "show_etherchannel_summary",
+        ],
+        "check_mtu_speed_duplex_mismatch": ["show_mtu", "show_iface"],
+        "check_vlan_trunk_consistency": [
+            "show_interface_switchport",
+            "show_interfaces_trunk",
+            "show_vlan",
+        ],
+        "check_stp_blocking_state": [
+            "show_spanning_tree_interface",
+            "show_spanning_tree",
+        ],
+        "check_errdisable_sanity": [
+            "show_errdisable_recovery",
+            "show_errdisable_detect",
+        ],
+        # ARP commands
+        "check_svi_status": ["show_svi"],
+        "check_arp_entry_lookup": ["show_arp_table"],
+        "check_arp_table_health": ["show_dai_status"],
+        "check_proxy_arp_config": ["show_proxy_arp"],
+        "check_mac_table_lookup": ["show_mac_table"],
+        "check_arp_gratuitous_signals": ["show_dai_status"],
+        "check_arp_aging_timers": ["show_arp_timers"],
+        "check_port_security_counters": ["show_port_security"],
     }
 
     if rule.id in rule_commands:
         for intent in rule_commands[rule.id]:
-            cmd_ir = VendorCommandIR(intent=intent, params={"iface": ctx.iface})
+            # Handle different parameter contexts
+            params = {"iface": ctx.iface}
+            if "bundle" in intent or "port_channel" in intent:
+                params["bundle"] = ctx.iface
+            if "target" in intent or "lacp" in intent:
+                params["target"] = ctx.iface
+            if "arp" in intent or "mac" in intent or "svi" in intent:
+                params["ip"] = ctx.iface
+                params["vlan"] = ctx.iface
+                params["mac"] = ctx.iface
+
+            cmd_ir = VendorCommandIR(intent=intent, params=params)
             commands.extend(cmd_ir.render(ctx.vendor))
 
     return commands
@@ -397,6 +456,24 @@ def _generate_result_text(rule: Rule, ctx: PlayContext) -> str:
         "check_rst_response": "Check if service is rejecting connections",
         "check_blackhole": "Check for routing issues or packet drops",
         "check_application": "Verify application is listening and configured",
+        # LACP templates
+        "check_bundle_members_status": f"Check bundle member interface status for {ctx.iface}",
+        "check_lacp_actor_partner_state": f"Verify LACP actor and partner state for {ctx.iface}",
+        "check_lacp_key_system_priority": f"Verify LACP key and system priority for {ctx.iface}",
+        "check_admin_mode_mismatch": f"Check admin mode configuration for {ctx.iface}",
+        "check_mtu_speed_duplex_mismatch": f"Verify MTU, speed, and duplex configuration for {ctx.iface}",
+        "check_vlan_trunk_consistency": f"Verify VLAN trunk configuration for {ctx.iface}",
+        "check_stp_blocking_state": f"Check spanning tree blocking state for {ctx.iface}",
+        "check_errdisable_sanity": f"Check errdisable status for interface {ctx.iface}",
+        # ARP templates
+        "check_svi_status": f"Check SVI status for VLAN {ctx.iface}",
+        "check_arp_entry_lookup": f"Check ARP entry for IP {ctx.iface}",
+        "check_arp_table_health": "Check ARP table health and DAI counters",
+        "check_proxy_arp_config": f"Check proxy ARP configuration for {ctx.iface}",
+        "check_mac_table_lookup": f"Check MAC table entry for {ctx.iface}",
+        "check_arp_gratuitous_signals": "Check gratuitous ARP signals and probes",
+        "check_arp_aging_timers": "Check ARP aging timers configuration",
+        "check_port_security_counters": f"Check port security counters for {ctx.iface}",
     }
 
     return result_templates.get(rule.id, f"Execute {rule.then_check}")

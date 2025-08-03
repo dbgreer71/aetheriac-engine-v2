@@ -23,6 +23,10 @@ TROUBLESHOOT_KEYWORDS: Set[str] = {
     "failed",
     "issue",
     "problem",
+    "incomplete",
+    "duplicate",
+    "stale",
+    "drops",
 }
 
 CONCEPT_KEYWORDS: Set[str] = {
@@ -47,6 +51,13 @@ PROTOCOL_KEYWORDS: Set[str] = {
     "tcp",
     "udp",
     "ip",
+    "lacp",
+    "etherchannel",
+    "port-channel",
+    "bundle",
+    "proxy-arp",
+    "dai",
+    "inspection",
 }
 
 # OSPF-specific terms for neighbor issue detection
@@ -103,6 +114,37 @@ TCP_TERMS: Set[str] = {
     "pmtud",
     "mtu blackhole",
     "blackhole",
+}
+
+# LACP-specific terms for port-channel issue detection
+LACP_TERMS: Set[str] = {
+    "lacp",
+    "etherchannel",
+    "port-channel",
+    "portchannel",
+    "po",
+    "bundle",
+    "bond",
+    "ae",
+    "link aggregation",
+    "aggregated ethernet",
+    "channel-group",
+    "channel group",
+    "lag",
+    "link aggregation group",
+}
+
+# ARP-specific terms for ARP anomaly detection
+ARP_TERMS: Set[str] = {
+    "arp",
+    "proxy-arp",
+    "gratuitous",
+    "incomplete",
+    "duplicate",
+    "dai",
+    "inspection",
+    "ip arp",
+    "arp table",
 }
 
 # Vendor keywords for troubleshooting
@@ -178,6 +220,13 @@ PLAYBOOK_SLUG_MAP: Dict[str, str] = {
     "ospf neighbor down": "ospf-neighbor-down",
     "ospf stuck": "ospf-neighbor-down",
     "ospf exstart": "ospf-neighbor-down",
+    "lacp": "lacp-port-channel-down",
+    "etherchannel": "lacp-port-channel-down",
+    "port-channel": "lacp-port-channel-down",
+    "ae": "lacp-port-channel-down",
+    "arp": "arp-anomalies",
+    "proxy-arp": "arp-anomalies",
+    "dai": "arp-anomalies",
 }
 
 

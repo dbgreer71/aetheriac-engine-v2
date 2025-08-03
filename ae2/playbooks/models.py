@@ -48,7 +48,9 @@ class Playbook(BaseModel):
 class PlayContext(BaseModel):
     """Context for executing a playbook."""
 
-    vendor: Literal["iosxe", "junos"] = Field(..., description="Target vendor")
+    vendor: Literal["iosxe", "junos", "nxos", "eos"] = Field(
+        ..., description="Target vendor"
+    )
     iface: str = Field(..., description="Interface name")
     area: Optional[str] = Field(None, description="OSPF area ID")
     auth: Optional[str] = Field(None, description="Authentication type")

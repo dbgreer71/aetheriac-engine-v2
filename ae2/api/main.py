@@ -751,6 +751,78 @@ def troubleshoot_ospf_neighbor(ctx: PlayContext):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/troubleshoot/lacp-portchannel")
+def troubleshoot_lacp_portchannel(ctx: PlayContext):
+    """Execute LACP/Port-channel down troubleshooting playbook."""
+    if store is None:
+        raise HTTPException(status_code=500, detail="Index store not initialized")
+
+    try:
+        # Use assembler for consistent behavior and step hash
+        from ae2.assembler.playbook import assemble_playbook
+
+        # Create context dict from PlayContext
+        context = {
+            "vendor": ctx.vendor,
+            "iface": ctx.iface,
+            "area": ctx.area,
+            "auth": ctx.auth,
+            "mtu": ctx.mtu,
+        }
+
+        result = assemble_playbook("lacp-port-channel-down", "", store, context)
+
+        return {
+            "playbook_id": result.get("playbook_id", "lacp-port-channel-down"),
+            "steps": result.get("steps", []),
+            "step_hash": result.get("step_hash", ""),
+            "debug": {
+                "matched_rules": len(result.get("steps", [])),
+                "vendor": ctx.vendor,
+                "iface": ctx.iface,
+                "area": ctx.area,
+            },
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/troubleshoot/arp-anomalies")
+def troubleshoot_arp_anomalies(ctx: PlayContext):
+    """Execute ARP anomalies troubleshooting playbook."""
+    if store is None:
+        raise HTTPException(status_code=500, detail="Index store not initialized")
+
+    try:
+        # Use assembler for consistent behavior and step hash
+        from ae2.assembler.playbook import assemble_playbook
+
+        # Create context dict from PlayContext
+        context = {
+            "vendor": ctx.vendor,
+            "iface": ctx.iface,
+            "area": ctx.area,
+            "auth": ctx.auth,
+            "mtu": ctx.mtu,
+        }
+
+        result = assemble_playbook("arp-anomalies", "", store, context)
+
+        return {
+            "playbook_id": result.get("playbook_id", "arp-anomalies"),
+            "steps": result.get("steps", []),
+            "step_hash": result.get("step_hash", ""),
+            "debug": {
+                "matched_rules": len(result.get("steps", [])),
+                "vendor": ctx.vendor,
+                "iface": ctx.iface,
+                "area": ctx.area,
+            },
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/debug/explain_playbook")
 def explain_playbook(slug: str = Query(...), vendor: str = Query(...)):
     """Get explanation of a playbook's rules and commands."""

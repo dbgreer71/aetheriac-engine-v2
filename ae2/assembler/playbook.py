@@ -201,13 +201,35 @@ def _create_play_context(query: str, context: Dict[str, Any] = None) -> PlayCont
     elif "iosxe" in query_lower or "ios" in query_lower or "cisco" in query_lower:
         vendor = "iosxe"
 
-    # Extract interface
+    # Extract interface or bundle
     interface_patterns = [
         ("g0/0", "GigabitEthernet0/0"),
         ("gigabitethernet0/0", "GigabitEthernet0/0"),
         ("ge-0/0/0", "ge-0/0/0"),
         ("ethernet0/0", "Ethernet0/0"),
+        # Bundle/Port-channel patterns
+        ("port-channel1", "Port-channel1"),
+        ("portchannel1", "Port-channel1"),
+        ("po1", "Port-channel1"),
+        ("bundle-ether1", "Bundle-Ether1"),
+        ("ae1", "ae1"),
     ]
+
+    # Extract IP addresses
+    import re
+
+    ip_pattern = r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b"
+    ips = re.findall(ip_pattern, query_lower)
+    if ips:
+        iface = ips[0]  # Use first IP found as interface
+
+    # Extract VLAN numbers
+    vlan_pattern = r"\bvlan\s*(\d+)\b"
+    vlan_match = re.search(vlan_pattern, query_lower)
+    if vlan_match:
+        vlan = vlan_match.group(1)
+        if not ips:  # If no IP found, use VLAN as interface
+            iface = f"Vlan{vlan}"
 
     for pattern, replacement in interface_patterns:
         if pattern in query_lower:

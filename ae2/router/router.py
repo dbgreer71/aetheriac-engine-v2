@@ -81,11 +81,16 @@ PROTO_WEIGHTS = {
     "bgp": 1.15,
     "ospf": 1.05,
     "tcp": 1.00,
+    "lacp": 1.10,
+    "arp": 1.00,
     "neighbor": 0.40,
     "down": 0.30,
     "idle": 0.2,
     "2-way": 0.2,
     "syn": 0.2,
+    "suspend": 0.25,
+    "incomplete": 0.25,
+    "duplicate": 0.25,
     "state": 0.30,  # for idle/2-way/exstart/syn etc
     "vendor": 0.4,
     "peer": 0.2,
@@ -331,6 +336,64 @@ def _detect_protocol_candidates(
                 score=base_score,
                 reasons=["tcp_terms"]
                 + (["tcp_state_terms"] if tcp_state_terms else []),
+                features=features.copy(),
+            )
+            candidates.append(candidate)
+
+    # LACP detection
+    from .lexicon import LACP_TERMS
+
+    lacp_terms_present = any(term in query_lower for term in LACP_TERMS)
+    lacp_state_terms = any(
+        term in query_lower
+        for term in [
+            "down",
+            "disabled",
+            "suspend",
+            "mismatch",
+            "not working",
+            "failed",
+            "broken",
+        ]
+    )
+
+    if lacp_terms_present:
+        base_score = _calculate_base_score(vendor, lacp_terms_present, lacp_state_terms)
+        if base_score >= 1:
+            candidate = TroubleshootCandidate(
+                target="lacp-port-channel-down",
+                score=base_score,
+                reasons=["lacp_terms"]
+                + (["lacp_state_terms"] if lacp_state_terms else []),
+                features=features.copy(),
+            )
+            candidates.append(candidate)
+
+    # ARP detection
+    from .lexicon import ARP_TERMS
+
+    arp_terms_present = any(term in query_lower for term in ARP_TERMS)
+    arp_state_terms = any(
+        term in query_lower
+        for term in [
+            "incomplete",
+            "duplicate",
+            "failed",
+            "poison",
+            "inspection",
+            "drops",
+            "stale",
+        ]
+    )
+
+    if arp_terms_present:
+        base_score = _calculate_base_score(vendor, arp_terms_present, arp_state_terms)
+        if base_score >= 1:
+            candidate = TroubleshootCandidate(
+                target="arp-anomalies",
+                score=base_score,
+                reasons=["arp_terms"]
+                + (["arp_state_terms"] if arp_state_terms else []),
                 features=features.copy(),
             )
             candidates.append(candidate)
@@ -589,6 +652,152 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
                 )
             )
 
+        # LACP path
+        from .lexicon import LACP_TERMS
+
+        lacp_tokens = {}
+        lacp_rules = []
+        lacp_tiebreak = {
+            "vendor": 1 if vendor else 0,
+            "protocol": 0,
+            "state": 0,
+            "ip": 0,
+            "iface": 0,
+            "port": 0,
+            "area": 0,
+            "keyword_count": 0,
+        }
+
+        if any(term in query_lower for term in LACP_TERMS):
+            lacp_tokens["lacp"] = sum(1 for term in LACP_TERMS if term in query_lower)
+            lacp_rules.append("lacp_auto_protocol")
+            lacp_tiebreak["protocol"] = 1
+
+        if any(
+            state in query_lower
+            for state in [
+                "down",
+                "disabled",
+                "suspend",
+                "mismatch",
+                "not working",
+                "failed",
+                "broken",
+            ]
+        ):
+            lacp_tokens["down"] = query_lower.count("down")
+            lacp_tokens["suspend"] = query_lower.count("suspend")
+            lacp_rules.append("lacp_auto_state")
+            lacp_tiebreak["state"] = 1
+
+        if vendor:
+            lacp_tokens["vendor"] = 1
+            lacp_rules.append("lacp_auto_vendor")
+
+        # Extract interface/bundle
+        bundle_patterns = [
+            r"\b(port-channel\d+|po\d+)\b",
+            r"\b(ae\d+)\b",
+            r"\b(bundle-ether\d+)\b",
+        ]
+        for pattern in bundle_patterns:
+            bundles = re.findall(pattern, query)
+            if bundles:
+                lacp_tokens["iface"] = 1
+                lacp_rules.append("lacp_auto_iface")
+                lacp_tiebreak["iface"] = 1
+                break
+
+        lacp_tiebreak["keyword_count"] = len(lacp_tokens)
+
+        if lacp_tokens:
+            lacp_score = compute_score(lacp_tokens, lacp_tiebreak)
+            lacp_reasons = rank_reasons(lacp_tokens, lacp_rules, lacp_tiebreak)
+            candidates.append(
+                (
+                    "lacp-port-channel-down",
+                    lacp_score,
+                    lacp_tokens,
+                    lacp_rules,
+                    lacp_reasons,
+                )
+            )
+
+        # ARP path
+        from .lexicon import ARP_TERMS
+
+        arp_tokens = {}
+        arp_rules = []
+        arp_tiebreak = {
+            "vendor": 1 if vendor else 0,
+            "protocol": 0,
+            "state": 0,
+            "ip": 0,
+            "iface": 0,
+            "port": 0,
+            "area": 0,
+            "keyword_count": 0,
+        }
+
+        if any(term in query_lower for term in ARP_TERMS):
+            arp_tokens["arp"] = sum(1 for term in ARP_TERMS if term in query_lower)
+            arp_rules.append("arp_auto_protocol")
+            arp_tiebreak["protocol"] = 1
+
+        if any(
+            state in query_lower
+            for state in [
+                "incomplete",
+                "duplicate",
+                "failed",
+                "poison",
+                "inspection",
+                "drops",
+                "stale",
+            ]
+        ):
+            arp_tokens["incomplete"] = query_lower.count("incomplete")
+            arp_tokens["duplicate"] = query_lower.count("duplicate")
+            arp_rules.append("arp_auto_state")
+            arp_tiebreak["state"] = 1
+
+        if vendor:
+            arp_tokens["vendor"] = 1
+            arp_rules.append("arp_auto_vendor")
+
+        # Extract IP addresses
+        import re
+
+        ip_pattern = r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b"
+        ips = re.findall(ip_pattern, query)
+        if ips:
+            arp_tokens["ip"] = 1
+            arp_rules.append("arp_auto_ip")
+            arp_tiebreak["ip"] = 1
+
+        # Extract VLAN numbers
+        vlan_pattern = r"\bvlan\s*(\d+)\b"
+        vlan_match = re.search(vlan_pattern, query_lower)
+        if vlan_match:
+            arp_tokens["iface"] = 1
+            arp_rules.append("arp_auto_iface")
+            arp_tiebreak["iface"] = 1
+
+        arp_tiebreak["keyword_count"] = len(arp_tokens)
+
+        if arp_tokens:
+            arp_score = compute_score(arp_tokens, arp_tiebreak)
+            arp_reasons = rank_reasons(arp_tokens, arp_rules, arp_tiebreak)
+            candidates.append(
+                (
+                    "arp-anomalies",
+                    arp_score,
+                    arp_tokens,
+                    arp_rules,
+                    arp_reasons,
+                )
+            )
+
         # Deterministic tie-breaks: higher score, then lexicographic target, then longest rules list
         if candidates:
             candidates.sort(key=lambda x: (-x[1], x[0], -len(x[3])))
@@ -662,7 +871,9 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
         has_vendor = any(
             v in normalized for v in ["iosxe", "junos", "cisco", "juniper"]
         )
-        has_protocol = any(p in normalized for p in ["bgp", "ospf", "tcp"])
+        has_protocol = any(
+            p in normalized for p in ["bgp", "ospf", "tcp", "lacp", "arp"]
+        )
         if not (has_vendor and has_protocol):
             return _cache_and_return(
                 RouteDecision(

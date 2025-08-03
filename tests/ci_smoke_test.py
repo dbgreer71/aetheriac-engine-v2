@@ -320,3 +320,77 @@ def test_explain_shows_vendor_inference(client):
     vi = exp.get("vendor_inference") or {}
     # do not assert exact vendor, just structure
     assert "hits" in vi or "if_hits" in vi
+
+
+def test_lacp_endpoint_smoke(client):
+    """Test LACP port-channel endpoint returns valid response."""
+    r = client.post(
+        "/troubleshoot/lacp-portchannel",
+        json={"vendor": "iosxe", "iface": "Port-channel1", "area": "0.0.0.0"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert "steps" in body and len(body["steps"]) == 8
+    assert "step_hash" in body
+
+
+def test_auto_lacp_route_smoke(client):
+    """Test auto-mode routing to LACP port-channel-down playbook."""
+    q = "iosxe port-channel1 down lacp"
+    r = client.post("/query?mode=auto", json={"query": q})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["intent"] == "TROUBLESHOOT"
+    assert body["route"]["target"] == "lacp-port-channel-down"
+    assert len(body["steps"]) == 8
+    assert "step_hash" in body
+
+
+def test_debug_route_lacp(client):
+    """Test debug route endpoint for LACP queries."""
+    q = "iosxe lacp port-channel down"
+    r = client.get(f"/debug/route?query={q}")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["intent"] == "TROUBLESHOOT"
+    assert body["target"] == "lacp-port-channel-down"
+    assert "ranked_reasons" in body["notes"]
+    assert any("lacp" in reason.lower() for reason in body["notes"]["ranked_reasons"])
+    assert body["confidence"] >= 0.6
+
+
+def test_arp_endpoint_smoke(client):
+    """Test ARP anomalies endpoint returns valid response."""
+    r = client.post(
+        "/troubleshoot/arp-anomalies",
+        json={"vendor": "iosxe", "iface": "192.0.2.10", "area": "0.0.0.0"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert "steps" in body and len(body["steps"]) == 8
+    assert "step_hash" in body
+
+
+def test_auto_arp_route_smoke(client):
+    """Test auto-mode routing to ARP anomalies playbook."""
+    q = "iosxe arp incomplete 192.0.2.10 vlan 10"
+    r = client.post("/query?mode=auto", json={"query": q})
+    assert r.status_code == 200
+    body = r.json()
+    assert body["intent"] == "TROUBLESHOOT"
+    assert body["route"]["target"] == "arp-anomalies"
+    assert len(body["steps"]) == 8
+    assert "step_hash" in body
+
+
+def test_debug_route_arp(client):
+    """Test debug route endpoint for ARP queries."""
+    q = "iosxe arp incomplete vlan 10"
+    r = client.get(f"/debug/route?query={q}")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["intent"] == "TROUBLESHOOT"
+    assert body["target"] == "arp-anomalies"
+    assert "ranked_reasons" in body["notes"]
+    assert any("arp" in reason.lower() for reason in body["notes"]["ranked_reasons"])
+    assert body["confidence"] >= 0.6
