@@ -155,6 +155,39 @@ class VendorCommandIR(BaseModel):
             return ["show processes cpu"]
         elif self.intent == "show_memory_statistics":
             return ["show memory statistics"]
+        # OSPF LSA storm commands
+        elif self.intent == "show_ospf_retransmit_queues":
+            return ["show ip ospf retransmission-list"]
+        elif self.intent == "show_ospf_neighbor_retransmit":
+            return ["show ip ospf neighbor detail | include retrans"]
+        elif self.intent == "show_ospf_lsa_pacing":
+            return ["show ip ospf interface | include pacing"]
+        elif self.intent == "show_ospf_throttle_config":
+            return ["show running-config | include ospf throttle"]
+        elif self.intent == "show_ospf_max_lsa":
+            return ["show ip ospf max-lsa"]
+        elif self.intent == "show_ospf_max_lsa_warnings":
+            return ["show ip ospf max-lsa warnings"]
+        elif self.intent == "show_ospf_neighbor_dr":
+            return ["show ip ospf neighbor | include DR"]
+        elif self.intent == "show_ospf_interface_dr":
+            return ["show ip ospf interface | include DR"]
+        elif self.intent == "show_ospf_lsa_generators":
+            return ["show ip ospf database | include generator"]
+        elif self.intent == "show_ospf_misconfigs":
+            return ["show running-config | include ospf"]
+        elif self.intent == "show_ospf_lsa_types":
+            return ["show ip ospf database | include Type"]
+        elif self.intent == "show_ospf_lsa_distribution":
+            return ["show ip ospf database summary"]
+        elif self.intent == "show_ospf_spf_throttle":
+            return ["show ip ospf spf-throttle"]
+        elif self.intent == "show_ospf_spf_timers":
+            return ["show ip ospf spf-timers"]
+        elif self.intent == "show_ospf_interface_errors":
+            return ["show interface | include errors"]
+        elif self.intent == "show_ospf_interface_drops":
+            return ["show interface | include drops"]
         else:
             return [f"# Unknown intent: {self.intent}"]
 
@@ -281,6 +314,39 @@ class VendorCommandIR(BaseModel):
             return ["show system processes cpu"]
         elif self.intent == "show_memory_statistics":
             return ["show system memory"]
+        # OSPF LSA storm commands
+        elif self.intent == "show_ospf_retransmit_queues":
+            return ["show ospf retransmit-list"]
+        elif self.intent == "show_ospf_neighbor_retransmit":
+            return ["show ospf neighbor detail | match retrans"]
+        elif self.intent == "show_ospf_lsa_pacing":
+            return ["show ospf interface | match pacing"]
+        elif self.intent == "show_ospf_throttle_config":
+            return ["show configuration protocols ospf | display set"]
+        elif self.intent == "show_ospf_max_lsa":
+            return ["show ospf max-lsa"]
+        elif self.intent == "show_ospf_max_lsa_warnings":
+            return ["show ospf max-lsa warnings"]
+        elif self.intent == "show_ospf_neighbor_dr":
+            return ["show ospf neighbor | match DR"]
+        elif self.intent == "show_ospf_interface_dr":
+            return ["show ospf interface | match DR"]
+        elif self.intent == "show_ospf_lsa_generators":
+            return ["show ospf database | match generator"]
+        elif self.intent == "show_ospf_misconfigs":
+            return ["show configuration protocols ospf | display set"]
+        elif self.intent == "show_ospf_lsa_types":
+            return ["show ospf database | match Type"]
+        elif self.intent == "show_ospf_lsa_distribution":
+            return ["show ospf database summary"]
+        elif self.intent == "show_ospf_spf_throttle":
+            return ["show ospf spf-throttle"]
+        elif self.intent == "show_ospf_spf_timers":
+            return ["show ospf spf-timers"]
+        elif self.intent == "show_ospf_interface_errors":
+            return ["show interface | match errors"]
+        elif self.intent == "show_ospf_interface_drops":
+            return ["show interface | match drops"]
         else:
             return [f"# Unknown intent: {self.intent}"]
 
