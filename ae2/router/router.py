@@ -14,6 +14,8 @@ from .lexicon import (
     find_playbook_slug,
     get_confidence_score,
     BGP_TERMS,
+    OFFTOPIC_TERMS,
+    AMBIGUOUS_PATTERNS,
 )
 
 # Import cache if available
@@ -64,38 +66,6 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
             cache_set(cache_key, decision)
         return decision
 
-    # Check for off-topic or ambiguous queries that should abstain
-    off_topic_terms = [
-        "weather",
-        "cook",
-        "pasta",
-        "computer",
-        "windows",
-        "python",
-        "database",
-        "web development",
-        "machine learning",
-        "cloud computing",
-    ]
-
-    ambiguous_terms = [
-        "router",
-        "protocol",
-        "connection",
-        "security",
-        "performance",
-        "monitoring",
-        "configuration",
-        "troubleshooting",
-        "best practices",
-        "documentation",
-        "training",
-        "certification",
-        "vendor",
-        "hardware",
-        "software",
-    ]
-
     # Check for empty or very short queries
     if not query.strip() or len(query.strip()) < 3:
         return _cache_and_return(
@@ -109,35 +79,74 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
             )
         )
 
-    # Check for off-topic queries
-    for term in off_topic_terms:
-        if term in query_lower:
-            return _cache_and_return(
-                RouteDecision(
-                    intent="ABSTAIN",
-                    target="",
-                    confidence=0.9,
-                    matches=[term],
-                    notes=f"Off-topic query containing '{term}'",
-                    mode_used="hybrid",
-                )
-            )
+    # Normalize query for token counting
+    import re
 
-    # Check for ambiguous queries (only if they appear alone)
-    query_words = query_lower.split()
-    if len(query_words) == 1:
-        for term in ambiguous_terms:
-            if query_words[0] == term:
-                return _cache_and_return(
-                    RouteDecision(
-                        intent="ABSTAIN",
-                        target="",
-                        confidence=0.8,
-                        matches=[term],
-                        notes=f"Ambiguous single-word query: '{term}'",
-                        mode_used="hybrid",
-                    )
-                )
+    normalized_query = re.sub(r"[^\w\s]", " ", query.lower())
+    alnum_tokens = [token for token in normalized_query.split() if token.isalnum()]
+
+    # Check for off-topic queries (highest precedence)
+    off_topic_matches = []
+    for term in OFFTOPIC_TERMS:
+        if term in query_lower:
+            off_topic_matches.append(term)
+
+    if off_topic_matches:
+        return _cache_and_return(
+            RouteDecision(
+                intent="ABSTAIN",
+                target="",
+                confidence=0.95,
+                matches=off_topic_matches,
+                notes=f"Off-topic query containing: {', '.join(off_topic_matches)}",
+                mode_used="hybrid",
+            )
+        )
+
+    # Check for ambiguous patterns (unless paired with protocol anchors)
+    ambiguous_matches = []
+    protocol_anchors = [
+        "ospf",
+        "bgp",
+        "eigrp",
+        "isis",
+        "rip",
+        "arp",
+        "tcp",
+        "udp",
+        "ip",
+    ]
+    has_protocol_anchor = any(anchor in query_lower for anchor in protocol_anchors)
+
+    for pattern in AMBIGUOUS_PATTERNS:
+        if pattern in query_lower:
+            ambiguous_matches.append(pattern)
+
+    # If ambiguous patterns found and no protocol anchor, abstain
+    if ambiguous_matches and not has_protocol_anchor:
+        return _cache_and_return(
+            RouteDecision(
+                intent="ABSTAIN",
+                target="",
+                confidence=0.85,
+                matches=ambiguous_matches,
+                notes=f"Ambiguous query without protocol context: {', '.join(ambiguous_matches)}",
+                mode_used="hybrid",
+            )
+        )
+
+    # Short query guard: ABSTAIN if <2 alnum tokens and no protocol anchor
+    if len(alnum_tokens) < 2 and not has_protocol_anchor:
+        return _cache_and_return(
+            RouteDecision(
+                intent="ABSTAIN",
+                target="",
+                confidence=0.9,
+                matches=alnum_tokens,
+                notes=f"Too short query without protocol context: {len(alnum_tokens)} tokens",
+                mode_used="hybrid",
+            )
+        )
 
     # Check for troubleshooting intent first (highest priority)
     is_troubleshoot, troubleshoot_matches, vendor = extract_troubleshoot_terms(query)
@@ -165,6 +174,7 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
     if bgp_terms_present and down_terms_present:
         playbook_slug, playbook_matches = find_playbook_slug(query)
         all_matches = troubleshoot_matches + playbook_matches + ["bgp"]
+        reasons = ["bgp+state_terms"]
 
         # Validate vendor for troubleshooting
         allowed_vendors = ["iosxe", "junos"]  # TODO: make configurable
@@ -185,14 +195,16 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
                 )
             )
 
+        if vendor:
+            reasons.append(f"vendor:{vendor}")
+
         return _cache_and_return(
             RouteDecision(
                 intent="TROUBLESHOOT",
                 target="bgp-neighbor-down",
                 confidence=get_confidence_score(all_matches, "TROUBLESHOOT"),
                 matches=all_matches,
-                notes="BGP troubleshooting detected for bgp-neighbor-down"
-                + (f" on {vendor}" if vendor else ""),
+                notes=f"BGP troubleshooting detected for bgp-neighbor-down on {vendor if vendor else 'unknown vendor'}. Reasons: {', '.join(reasons)}",
                 mode_used="hybrid",
             )
         )
@@ -202,6 +214,7 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
     if vendor_present and "bgp" in query_lower:
         playbook_slug, playbook_matches = find_playbook_slug(query)
         all_matches = troubleshoot_matches + playbook_matches + ["bgp", vendor]
+        reasons = ["bgp+vendor"]
 
         # Validate vendor for troubleshooting
         allowed_vendors = ["iosxe", "junos"]  # TODO: make configurable
@@ -222,13 +235,15 @@ def route(query: str, stores: Dict[str, Any]) -> RouteDecision:
                 )
             )
 
+        reasons.append(f"vendor:{vendor}")
+
         return _cache_and_return(
             RouteDecision(
                 intent="TROUBLESHOOT",
                 target="bgp-neighbor-down",
                 confidence=get_confidence_score(all_matches, "TROUBLESHOOT"),
                 matches=all_matches,
-                notes=f"BGP troubleshooting detected for bgp-neighbor-down on {vendor}",
+                notes=f"BGP troubleshooting detected for bgp-neighbor-down on {vendor}. Reasons: {', '.join(reasons)}",
                 mode_used="hybrid",
             )
         )

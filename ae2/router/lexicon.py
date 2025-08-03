@@ -64,6 +64,62 @@ TROUBLESHOOT_KEYWORDS: Set[str] = {
     "bgp remote as",
 }
 
+# Off-topic terms (disjoint from networking)
+OFFTOPIC_TERMS: Set[str] = {
+    "weather",
+    "temperature",
+    "cooking",
+    "recipe",
+    "finance",
+    "stock",
+    "movie",
+    "netflix",
+    "pizza",
+    "gym",
+    "horoscope",
+    "lottery",
+    "crypto",
+    "booking",
+    "restaurant",
+    "travel",
+    "cook",
+    "pasta",
+    "computer",
+    "windows",
+    "python",
+    "database",
+    "web development",
+    "machine learning",
+    "cloud computing",
+}
+
+# Ambiguous patterns that force abstain unless paired with protocol anchors
+AMBIGUOUS_PATTERNS: Set[str] = {
+    "best practices",
+    "overview",
+    "tutorial",
+    "guide",
+    "router",
+    "protocol",
+    "interface",
+    "design",
+    "help",
+    "advice",
+    "tips",
+    "connection",
+    "security",
+    "performance",
+    "monitoring",
+    "configuration",
+    "troubleshooting",
+    "documentation",
+    "training",
+    "certification",
+    "vendor",
+    "hardware",
+    "software",
+}
+
 CONCEPT_KEYWORDS: Set[str] = {
     "concept",
     "concept card",
