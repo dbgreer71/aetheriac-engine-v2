@@ -18,3 +18,13 @@
 {"id":"T18","query":"iosxe bgp platform drops","ctx":{"vendor":"iosxe","peer":"192.0.2.1"},"expected":{"min_steps":8,"must_include":["bgp","fsm","state"]}}
 {"id":"T19","query":"junos bgp dampening","ctx":{"vendor":"junos","peer":"192.0.2.1"},"expected":{"min_steps":8,"must_include":["bgp","fsm","state"]}}
 {"id":"T20","query":"iosxe bgp session churn","ctx":{"vendor":"iosxe","peer":"192.0.2.1"},"expected":{"min_steps":8,"must_include":["bgp","fsm","state"]}}
+{"id":"T21","query":"iosxe tcp syn timeout 203.0.113.10:443","ctx":{"vendor":"iosxe","dst":"203.0.113.10","dport":"443"},"expected":{"min_steps":8,"must_include":["tcp","syn","timeout"]}}
+{"id":"T22","query":"junos tcp connection refused 198.51.100.1:80","ctx":{"vendor":"junos","dst":"198.51.100.1","dport":"80"},"expected":{"min_steps":8,"must_include":["tcp","connection","refused"]}}
+{"id":"T23","query":"iosxe tcp mss blackhole 203.0.113.10:443","ctx":{"vendor":"iosxe","dst":"203.0.113.10","dport":"443"},"expected":{"min_steps":8,"must_include":["tcp","mss","blackhole"]}}
+{"id":"T24","query":"junos tcp pmtud issues 198.51.100.1:80","ctx":{"vendor":"junos","dst":"198.51.100.1","dport":"80"},"expected":{"min_steps":8,"must_include":["tcp","pmtud"]}}
+{"id":"T25","query":"iosxe tcp firewall drop 203.0.113.10:443","ctx":{"vendor":"iosxe","dst":"203.0.113.10","dport":"443"},"expected":{"min_steps":8,"must_include":["tcp","firewall","drop"]}}
+{"id":"T26","query":"junos tcp nat miss 198.51.100.1:80","ctx":{"vendor":"junos","dst":"198.51.100.1","dport":"80"},"expected":{"min_steps":8,"must_include":["tcp","nat"]}}
+{"id":"T27","query":"iosxe tcp reverse path 203.0.113.10:443","ctx":{"vendor":"iosxe","dst":"203.0.113.10","dport":"443"},"expected":{"min_steps":8,"must_include":["tcp","reverse","path"]}}
+{"id":"T28","query":"junos tcp interface errors 198.51.100.1:80","ctx":{"vendor":"junos","dst":"198.51.100.1","dport":"80"},"expected":{"min_steps":8,"must_include":["tcp","interface","errors"]}}
+{"id":"T29","query":"iosxe tcp rst storm 203.0.113.10:443","ctx":{"vendor":"iosxe","dst":"203.0.113.10","dport":"443"},"expected":{"min_steps":8,"must_include":["tcp","rst","storm"]}}
+{"id":"T30","query":"junos tcp handshake failure 198.51.100.1:80","ctx":{"vendor":"junos","dst":"198.51.100.1","dport":"80"},"expected":{"min_steps":8,"must_include":["tcp","handshake","failure"]}}
