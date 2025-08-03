@@ -200,6 +200,33 @@ class TestTroubleshootingRouting:
             data["step_hash"] == data2["step_hash"]
         ), "Step hash should be deterministic across runs"
 
+    def test_tcp_troubleshoot_target(self, client):
+        """Test TCP handshake troubleshooting routing."""
+        response = client.post(
+            "/query?mode=auto",
+            json={"query": "iosxe tcp syn timeout 203.0.113.10:443"},
+        )
+        assert response.status_code == 200
+
+        data = response.json()
+        assert data["intent"] == "TROUBLESHOOT"
+        assert data["route"]["target"] == "tcp-handshake"
+        assert "steps" in data
+        assert len(data["steps"]) >= 8  # TCP playbook has 8 steps
+        assert data["mode"] == "auto"
+        assert "step_hash" in data  # Step hash should be present
+
+        # Test deterministic behavior - two consecutive calls should yield identical step_hash
+        response2 = client.post(
+            "/query?mode=auto",
+            json={"query": "iosxe tcp syn timeout 203.0.113.10:443"},
+        )
+        assert response2.status_code == 200
+        data2 = response2.json()
+        assert (
+            data["step_hash"] == data2["step_hash"]
+        ), "Step hash should be deterministic across runs"
+
 
 class TestDebugEndpoints:
     """Test debug endpoints for routing and assembly."""

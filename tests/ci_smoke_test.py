@@ -87,6 +87,66 @@ def test_bgp_endpoint_smoke(app_client):
     ), "Step hash should be deterministic across runs"
 
 
+def test_tcp_endpoint_smoke(app_client):
+    """Test POST /troubleshoot/tcp-handshake endpoint."""
+    # Set environment to disable auth for testing
+    import os
+
+    os.environ["AE_DISABLE_AUTH"] = "true"
+
+    response = app_client.post(
+        "/troubleshoot/tcp-handshake",
+        json={"vendor": "iosxe", "dst": "203.0.113.10", "dport": "443"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert "steps" in body
+    assert len(body["steps"]) >= 8  # TCP playbook should have 8 steps
+    assert "step_hash" in body  # Step hash should be present
+    assert len(body["step_hash"]) > 0  # Step hash should not be empty
+
+    # Test deterministic behavior - two consecutive calls should yield identical step_hash
+    response2 = app_client.post(
+        "/troubleshoot/tcp-handshake",
+        json={"vendor": "iosxe", "dst": "203.0.113.10", "dport": "443"},
+    )
+    assert response2.status_code == 200
+    body2 = response2.json()
+    assert (
+        body["step_hash"] == body2["step_hash"]
+    ), "Step hash should be deterministic across runs"
+
+
+def test_auto_tcp_route_smoke(app_client):
+    """Test POST /query?mode=auto with TCP query."""
+    # Set environment to disable auth for testing
+    import os
+
+    os.environ["AE_DISABLE_AUTH"] = "true"
+
+    response = app_client.post(
+        "/query?mode=auto", json={"query": "iosxe tcp syn timeout 203.0.113.10:443"}
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert "intent" in body
+    assert body["intent"] == "TROUBLESHOOT"
+    assert "steps" in body
+    assert len(body["steps"]) >= 8  # Should route to TCP playbook with 8 steps
+    assert "step_hash" in body  # Step hash should be present
+    assert len(body["step_hash"]) > 0  # Step hash should not be empty
+
+    # Test deterministic behavior - two consecutive calls should yield identical step_hash
+    response2 = app_client.post(
+        "/query?mode=auto", json={"query": "iosxe tcp syn timeout 203.0.113.10:443"}
+    )
+    assert response2.status_code == 200
+    body2 = response2.json()
+    assert (
+        body["step_hash"] == body2["step_hash"]
+    ), "Step hash should be deterministic across runs"
+
+
 def test_debug_route_abstain(app_client):
     """Test GET /debug/route with off-topic query."""
     # Set environment to disable auth for testing
