@@ -353,3 +353,108 @@ jobs:
             perf_http.json
             perf_metrics.prom
             perf_summary.json
+
+  gates-m1-3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: test-api
+    continue-on-error: true
+    env:
+      PYTHONUNBUFFERED: "1"
+      PYTHONHASHSEED: "0"
+      ENVIRONMENT: "development"
+      DEBUG: "true"
+      ENABLE_DENSE: "0"
+      AE_INDEX_DIR: "${{ github.workspace }}/data/index"
+      AE_CACHE_ENABLED: "0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install (editable + eval deps)
+        run: |
+          python -m pip install -U pip
+          python -m pip install -c constraints/ci.txt -e .
+          python -m pip install -c constraints/ci.txt jq
+
+      - name: Download RFC index artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rfc-index
+          path: data/index
+
+      - name: Verify downloaded index
+        run: |
+          set -euo pipefail
+          ls -la data/index
+          test -f data/index/sections.jsonl || { echo "sections.jsonl not found"; exit 1; }
+
+      - name: Run negatives M1 evaluation
+        run: |
+          set -euo pipefail
+          echo "Running negatives M1 evaluation..."
+          python -m ae2.eval.run --suite negatives --dataset m1 --json eval_negatives_m1.json --repeats 1
+
+          # Check abstain rate >= 95%
+          abstain_rate=$(python -c "
+          import json
+          with open('eval_negatives_m1.json') as f:
+              data = json.load(f)
+          print(data['metrics']['abstain_rate'])
+          ")
+          echo "Abstain rate: $abstain_rate"
+          if (( $(echo "$abstain_rate >= 0.95" | bc -l) )); then
+              echo "PASS: Abstain rate >= 95%"
+          else
+              echo "FAIL: Abstain rate < 95%"
+              exit 1
+          fi
+
+      - name: Run trouble M1 evaluation
+        run: |
+          set -euo pipefail
+          echo "Running trouble M1 evaluation..."
+          python -m ae2.eval.run --suite trouble --dataset m1 --json eval_trouble_m1.json --repeats 1
+
+          # Check p95 latency <= 200ms
+          p95_latency=$(python -c "
+          import json
+          with open('eval_trouble_m1.json') as f:
+              data = json.load(f)
+          print(data['metrics']['p95_latency_ms'])
+          ")
+          echo "P95 latency: ${p95_latency}ms"
+          if (( $(echo "$p95_latency <= 200" | bc -l) )); then
+              echo "PASS: P95 latency <= 200ms"
+          else
+              echo "FAIL: P95 latency > 200ms"
+              exit 1
+          fi
+
+          # Check min_steps pass rate >= 0.9
+          min_steps_rate=$(python -c "
+          import json
+          with open('eval_trouble_m1.json') as f:
+              data = json.load(f)
+          print(data['metrics']['pass_min_steps_rate'])
+          ")
+          echo "Min steps pass rate: $min_steps_rate"
+          if (( $(echo "$min_steps_rate >= 0.9" | bc -l) )); then
+              echo "PASS: Min steps pass rate >= 0.9"
+          else
+              echo "FAIL: Min steps pass rate < 0.9"
+              exit 1
+          fi
+
+      - name: Upload eval artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-m1-3-artifacts
+          path: |
+            eval_negatives_m1.json
+            eval_trouble_m1.json
+          retention-days: 7
