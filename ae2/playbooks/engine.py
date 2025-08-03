@@ -125,10 +125,14 @@ def create_ospf_neighbor_playbook() -> Playbook:
 def run_playbook(slug: str, ctx: PlayContext, store: IndexStore) -> PlayResult:
     """Run a playbook with the given context and return deterministic results."""
 
-    if slug != "ospf-neighbor-down":
+    if slug == "ospf-neighbor-down":
+        playbook = create_ospf_neighbor_playbook()
+    elif slug == "bgp-neighbor-down":
+        playbook = create_bgp_neighbor_playbook()
+    elif slug == "tcp-handshake":
+        playbook = create_tcp_handshake_playbook()
+    else:
         raise ValueError(f"Unknown playbook: {slug}")
-
-    playbook = create_ospf_neighbor_playbook()
     steps = []
 
     # Execute rules in deterministic order

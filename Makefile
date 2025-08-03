@@ -1,4 +1,4 @@
-.PHONY: demo eval-defs eval-concepts eval-trouble perf
+.PHONY: demo eval-defs eval-concepts eval-trouble perf fix
 
 demo:
 	AE_INDEX_DIR=$(PWD)/data/index ENABLE_DENSE=0 python -m ae2.eval.run --suite defs --dataset sample --json /tmp/defs.demo.json --repeats 1 --strict || true
@@ -28,6 +28,10 @@ perf-http:
 
 perf:
 	AE_INDEX_DIR=$(PWD)/data/index ENABLE_DENSE=0 python -m ae2.eval.run --suite defs --dataset sample --json /tmp/perf_defs.json --repeats 10
+
+fix:
+	ruff check --fix --unsafe-fixes .
+	black .
 
 ci-local:
 	ENVIRONMENT=development DEBUG=true ENABLE_DENSE=0 AE_INDEX_DIR=$$(pwd)/data/index AE_BIND_PORT=8001 \
