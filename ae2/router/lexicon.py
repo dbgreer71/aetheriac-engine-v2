@@ -64,6 +64,25 @@ TROUBLESHOOT_KEYWORDS: Set[str] = {
     "bgp remote as",
 }
 
+# TCP handshake troubleshooting terms
+TCP_TERMS: Set[str] = {
+    "tcp",
+    "syn",
+    "syn-ack",
+    "handshake",
+    "three way",
+    "3-way",
+    "reset",
+    "rst",
+    "timeout",
+    "refused",
+    "connection refused",
+    "mss",
+    "pmtud",
+    "mtu blackhole",
+    "blackhole",
+}
+
 # Off-topic terms (disjoint from networking)
 OFFTOPIC_TERMS: Set[str] = {
     "weather",
