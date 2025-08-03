@@ -138,6 +138,7 @@ def test_auto_bgp_route_smoke(app_client):
     assert "steps" in body
     assert len(body["steps"]) >= 8  # Should route to BGP playbook with 8 steps
     assert "step_hash" in body  # Step hash should be present
+    assert len(body["step_hash"]) > 0  # Step hash should not be empty
 
     # Test deterministic behavior - two consecutive calls should yield identical step_hash
     response2 = app_client.post(

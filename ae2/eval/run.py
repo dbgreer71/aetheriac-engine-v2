@@ -612,7 +612,24 @@ def check_thresholds(report: Dict, strict: bool = False) -> bool:
     # Determine if this is M1 dataset
     is_m1 = dataset == "m1"
 
-    if suite == "defs":
+    # M1.2 strict thresholds (highest precedence)
+    if is_m1 and strict:
+        if suite == "negatives":
+            thresholds = {
+                "abstain_accuracy": 0.95,  # M1.2 requirement
+                "p95_latency": 200.0,  # M1.2 requirement
+            }
+        elif suite == "trouble":
+            thresholds = {
+                "pass_min_steps": 0.70,  # M1 requirement
+                "deterministic_score": 0.99,  # M1.2 requirement
+                "p95_latency": 200.0,  # M1.2 requirement
+            }
+        else:
+            thresholds = {
+                "p95_latency": 200.0,  # M1.2 requirement
+            }
+    elif suite == "defs":
         if is_m1:
             thresholds = {
                 "intent_acc": 0.80,  # Raised for M1
